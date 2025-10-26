@@ -40,7 +40,10 @@ Route::get('/categories/{category:slug}', [CategoryController::class, 'show'])->
 Route::get('/technologies/{technology:slug}', [TechnologyController::class, 'show'])->name('technologies.show');
 
 // Rute untuk Halaman Profil Publik
-Route::get('/@{user:nim}', [ProfileController::class, 'publicShow'])->name('profile.public.show');
+Route::get('/@{user:username}', [ProfileController::class, 'publicShow'])->name('profile.public.show');
+
+// Route for checking username availability
+Route::get('/check-username', [App\Http\Controllers\CheckUsernameController::class, 'check'])->name('check-username');
 
 
 // --- RUTE AUTENTIKASI (Harus Login) ---
@@ -53,6 +56,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Rute Profil (Bawaan Breeze, sudah berfungsi)
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::patch('/profile/username', [ProfileController::class, 'updateUsername'])->name('profile.username.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Rute untuk meng-update data di tabel 'profiles'

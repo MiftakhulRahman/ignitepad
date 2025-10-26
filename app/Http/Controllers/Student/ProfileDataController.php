@@ -25,7 +25,6 @@ class ProfileDataController extends Controller
             'linkedin_url' => 'nullable|url|max:255',
             'github_url' => 'nullable|url|max:255',
             'portfolio_url' => 'nullable|url|max:255',
-            'cv_file' => 'nullable|file|mimes:pdf|max:2048', // 2MB max
             'achievements' => 'nullable|string',
         ]);
 
@@ -50,17 +49,6 @@ class ProfileDataController extends Controller
         // 3. Dapatkan profil (atau buat baru jika belum ada)
         // updateOrCreate = Jika user_id sudah ada, update. Jika belum, buat baru.
         $profile = Profile::firstOrNew(['user_id' => $user->id]);
-
-        // 4. Handle Upload CV
-        if ($request->hasFile('cv_file')) {
-            // Hapus CV lama jika ada
-            if ($profile->cv_file) {
-                Storage::disk('public')->delete($profile->cv_file);
-            }
-            // Simpan CV baru di storage/app/public/cvs
-            $path = $request->file('cv_file')->store('cvs', 'public');
-            $dataToUpdate['cv_file'] = $path;
-        }
 
         // 5. Simpan data ke database
         $profile->fill($dataToUpdate);

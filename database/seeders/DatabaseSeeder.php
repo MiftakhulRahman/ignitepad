@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Admin IgnitePad',
                 'nim' => 'admin',
+                'username' => 'admin',
                 'password' => bcrypt('password'),
                 'role' => 'admin',
                 'status' => 'active',
@@ -33,7 +34,8 @@ class DatabaseSeeder extends Seeder
             ['email' => 'dosen@unuha.ac.id'], // Email login dosen
             [
                 'name' => 'Budi Dosen, M.Kom.',
-                'nim' => 'dosen123', // Dosen juga punya NIP/NIDN, kita pakai 'nim' dulu
+                'nim' => 'dosen123',
+                'username' => 'budidosen', // Dosen juga punya NIP/NIDN, kita pakai 'nim' dulu
                 'password' => bcrypt('password'), // Password: "password"
                 'role' => 'lecturer',
                 'status' => 'active',

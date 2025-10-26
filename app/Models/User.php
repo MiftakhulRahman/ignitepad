@@ -18,6 +18,7 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     protected $fillable = [
         'name',
+        'username',
         'email',
         'password',
         'nim',
@@ -56,7 +57,7 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function getRouteKeyName(): string
     {
-        return 'nim';
+        return 'username';
     }
 
     // --- RELASI ---

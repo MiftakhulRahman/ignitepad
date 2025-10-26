@@ -55,18 +55,7 @@
             <x-input-error class="mt-2" :messages="$errors->get('achievements')" />
         </div>
         
-        <div>
-            <x-input-label for="cv_file" :value="__('Upload CV (PDF)')" />
-            <input id="cv_file" name="cv_file" type="file" class="block mt-1 w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" accept="application/pdf">
-            <small class="text-gray-500 dark:text-gray-400">Maks 2MB. Kosongkan jika tidak ingin mengubah.</small>
-            <x-input-error class="mt-2" :messages="$errors->get('cv_file')" />
-            
-            @if ($user->profile?->cv_file)
-            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                CV saat ini: <a href="{{ Storage::url($user->profile->cv_file) }}" target="_blank" class="underline text-blue-500">Lihat CV</a>
-            </p>
-            @endif
-        </div>
+
 
 
         <div class="flex items-center gap-4">

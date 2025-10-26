@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use App\Models\User;
+use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
 {
@@ -67,6 +68,26 @@ class ProfileController extends Controller
         $user->save();
 
         return Redirect::route('profile.edit')->with('status', 'profile-updated');
+    }
+
+    /**
+     * Update the user's username via AJAX.
+     */
+    public function updateUsername(Request $request)
+    {
+        $user = $request->user();
+
+        $request->validate([
+            'username' => [
+                'required', 'string', 'max:255',
+                Rule::unique(User::class)->ignore($user->id),
+            ],
+        ]);
+
+        $user->username = $request->input('username');
+        $user->save();
+
+        return response()->json(['message' => __('Username Anda telah diperbarui.')], 200);
     }
 
     /**

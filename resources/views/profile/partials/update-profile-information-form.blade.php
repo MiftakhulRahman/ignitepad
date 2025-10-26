@@ -41,12 +41,27 @@
             <x-input-error class="mt-2" :messages="$errors->get('name')" />
         </div>
 
+        <div>
+            <x-input-label for="username" :value="__('Username')" />
+            <div class="flex items-center space-x-2">
+                <x-text-input id="username" name="username" type="text" class="mt-1 block w-full bg-gray-100 dark:bg-gray-700" :value="old('username', $user->username)" required autocomplete="username" readonly />
+                <x-secondary-button type="button" id="toggle-username-edit">{{ __('Ubah') }}</x-secondary-button>
+                <x-primary-button type="button" id="save-username-button" class="hidden">{{ __('Simpan') }}</x-primary-button>
+                <x-secondary-button type="button" id="cancel-username-edit-button" class="hidden">{{ __('Batal') }}</x-secondary-button>
+            </div>
+            <x-input-error class="mt-2" :messages="$errors->get('username')" />
+            <span id="username-availability-message" class="text-sm mt-2"></span>
+            <small class="text-gray-500 dark:text-gray-400">Username ini akan digunakan untuk URL profil publik Anda (contoh: /@<span>{{ $user->username ?? 'john.doe' }}</span>).</small>
+        </div>
+
+        @if (Auth::user()->isStudent())
         <div class="mt-4">
             <x-input-label for="nim" :value="__('NIM (Nomor Induk Mahasiswa)')" />
-            <x-text-input id="nim" name="nim" type="text" class="mt-1 block w-full" :value="old('nim', $user->nim)" required autocomplete="username" />
+            <x-text-input id="nim" name="nim" type="text" class="mt-1 block w-full" :value="old('nim', $user->nim)" autocomplete="username" />
             <x-input-error class="mt-2" :messages="$errors->get('nim')" />
             <small class="text-gray-500 dark:text-gray-400">NIM ini akan digunakan untuk URL profil publik Anda (contoh: /@<span>{{ $user->nim ?? '123456' }}</span>).</small>
         </div>
+        @endif
         
         <div class="mt-4">
             <x-input-label for="phone" :value="__('Nomor Telepon')" />
@@ -85,7 +100,7 @@
         </div>
 
         <div class="flex items-center gap-4">
-            <x-primary-button>{{ __('Save') }}</x-primary-button>
+            <x-primary-button id="save-profile-button">{{ __('Save') }}</x-primary-button>
 
             @if (session('status') === 'profile-updated')
                 <p
@@ -94,8 +109,163 @@
                     x-transition
                     x-init="setTimeout(() => show = false, 2000)"
                     class="text-sm text-gray-600 dark:text-gray-400"
-                >{{ __('Saved.') }}</p>
+                >{{ __('Berhasil disimpan.') }}</p>
             @endif
         </div>
     </form>
 </section>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const usernameInput = document.getElementById('username');
+        const usernameAvailabilityMessage = document.getElementById('username-availability-message');
+        const saveProfileButton = document.getElementById('save-profile-button');
+        const toggleUsernameEditButton = document.getElementById('toggle-username-edit');
+        const saveUsernameButton = document.getElementById('save-username-button');
+        const cancelUsernameEditButton = document.getElementById('cancel-username-edit-button');
+        let initialUsername = usernameInput.value; // Store initial username
+
+        let typingTimer;
+        const doneTypingInterval = 500; // milliseconds
+        let isUsernameAvailable = true; // Assume available initially for profile update
+        let isUsernameEditing = false; // Track if username is currently being edited
+        const currentUserId = {{ Auth::user()->id }};
+
+        // Function to toggle username edit mode
+        function toggleUsernameEditMode(enable) {
+            isUsernameEditing = enable;
+            if (enable) {
+                usernameInput.removeAttribute('readonly');
+                usernameInput.classList.remove('bg-gray-100', 'dark:bg-gray-700');
+                usernameInput.focus();
+                toggleUsernameEditButton.classList.add('hidden');
+                saveUsernameButton.classList.remove('hidden');
+                cancelUsernameEditButton.classList.remove('hidden');
+                // Trigger initial check if username is not empty
+                if (usernameInput.value) {
+                    checkUsernameAvailability();
+                }
+            } else {
+                usernameInput.setAttribute('readonly', 'true');
+                usernameInput.classList.add('bg-gray-100', 'dark:bg-gray-700');
+                usernameInput.value = initialUsername; // Revert to initial username
+                toggleUsernameEditButton.classList.remove('hidden');
+                saveUsernameButton.classList.add('hidden');
+                cancelUsernameEditButton.classList.add('hidden');
+                usernameAvailabilityMessage.textContent = '';
+                usernameAvailabilityMessage.classList.remove('text-green-500', 'text-red-500');
+                isUsernameAvailable = true; // Reset availability state
+            }
+            toggleSaveUsernameButtonState(); // Update state of save username button
+        }
+
+        // Event listener for 'Ubah' button
+        toggleUsernameEditButton.addEventListener('click', function() {
+            toggleUsernameEditMode(true);
+        });
+
+        // Event listener for 'Batal' button
+        cancelUsernameEditButton.addEventListener('click', function() {
+            toggleUsernameEditMode(false);
+        });
+
+        // Event listener for 'Simpan' username button
+        saveUsernameButton.addEventListener('click', function() {
+            if (saveUsernameButton.hasAttribute('disabled')) return;
+
+            const newUsername = usernameInput.value;
+            fetch('{{ route('profile.username.update') }}', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({ username: newUsername })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    alert(data.message); // Or display a more subtle success message
+                    initialUsername = newUsername; // Update initial username
+                    toggleUsernameEditMode(false); // Exit edit mode
+                } else if (data.errors) {
+                    // Handle validation errors from the server
+                    usernameAvailabilityMessage.textContent = data.errors.username[0];
+                    usernameAvailabilityMessage.classList.remove('text-green-500');
+                    usernameAvailabilityMessage.classList.add('text-red-500');
+                    isUsernameAvailable = false;
+                    toggleSaveUsernameButtonState();
+                }
+            })
+            .catch(error => {
+                console.error('Error updating username:', error);
+                alert('Terjadi kesalahan saat memperbarui username.');
+            });
+        });
+
+        if (usernameInput) {
+            usernameInput.addEventListener('keyup', function () {
+                if (!isUsernameEditing) return; // Only check if editing is active
+
+                clearTimeout(typingTimer);
+                if (usernameInput.value) {
+                    typingTimer = setTimeout(checkUsernameAvailability, doneTypingInterval);
+                } else {
+                  if (isUsernameEditing) { // Added this check
+                    usernameAvailabilityMessage.textContent = '';
+                    usernameAvailabilityMessage.classList.remove('text-green-500', 'text-red-500');
+                    isUsernameAvailable = false;
+                    toggleSaveUsernameButtonState();
+                  }
+                }
+            });
+        }
+
+        function checkUsernameAvailability() {
+            const username = usernameInput.value;
+            if (!username) return;
+
+            fetch(`/check-username?username=${username}&ignore_id=${currentUserId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.available) {
+                        usernameAvailabilityMessage.textContent = 'Username tersedia.';
+                        usernameAvailabilityMessage.classList.remove('text-red-500');
+                        usernameAvailabilityMessage.classList.add('text-green-500');
+                        isUsernameAvailable = true;
+                    } else {
+                        usernameAvailabilityMessage.textContent = 'Username tidak tersedia.';
+                        usernameAvailabilityMessage.classList.remove('text-green-500');
+                        usernameAvailabilityMessage.classList.add('text-red-500');
+                        isUsernameAvailable = false;
+                    }
+                    toggleSaveUsernameButtonState();
+                })
+                .catch(error => {
+                    console.error('Error checking username availability:', error);
+                    usernameAvailabilityMessage.textContent = 'Terjadi kesalahan saat memeriksa username.';
+                    usernameAvailabilityMessage.classList.remove('text-green-500');
+                    usernameAvailabilityMessage.classList.add('text-red-500');
+                    isUsernameAvailable = false;
+                    toggleSaveUsernameButtonState();
+                });
+        }
+
+        function toggleSaveUsernameButtonState() {
+            const isUsernameChanged = usernameInput.value !== initialUsername;
+            if (isUsernameEditing && isUsernameAvailable && isUsernameChanged && usernameInput.value.length > 0) {
+                saveUsernameButton.removeAttribute('disabled');
+                saveUsernameButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                saveUsernameButton.setAttribute('disabled', 'true');
+                saveUsernameButton.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        // Initial state: username is readonly, main save button is enabled
+        usernameInput.setAttribute('readonly', 'true');
+        usernameInput.classList.add('bg-gray-100', 'dark:bg-gray-700');
+        saveProfileButton.removeAttribute('disabled');
+        saveProfileButton.classList.remove('opacity-50', 'cursor-not-allowed');
+    });
+</script>
