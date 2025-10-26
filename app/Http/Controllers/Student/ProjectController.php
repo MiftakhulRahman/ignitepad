@@ -63,6 +63,8 @@ class ProjectController extends Controller
             'technologies.*' => 'exists:technologies,id',
             'screenshots' => 'nullable|array',
             'screenshots.*' => 'image|mimes:jpeg,png,jpg,webp|max:2048',
+            'collaborators' => 'nullable|array',
+            'collaborators.*' => 'exists:users,id',
         ]);
 
         $thumbnailPath = null;
@@ -75,6 +77,10 @@ class ProjectController extends Controller
         $validated['slug'] = Str::slug($validated['title']) . '-' . uniqid();
 
         $project = Project::create($validated);
+
+        $collaborators = $request->input('collaborators', []);
+        $collaborators[] = Auth::id();
+        $project->collaborators()->sync(array_unique($collaborators));
 
         if (!empty($validated['categories'])) {
             $project->categories()->attach($validated['categories']);
@@ -142,6 +148,8 @@ class ProjectController extends Controller
             'technologies.*' => 'exists:technologies,id',
             'screenshots' => 'nullable|array',
             'screenshots.*' => 'image|mimes:jpeg,png,jpg,webp|max:2048',
+            'collaborators' => 'nullable|array',
+            'collaborators.*' => 'exists:users,id',
         ]);
 
         $notifyLecturers = ($project->status !== 'review' && $validated['status'] === 'review');
@@ -157,6 +165,10 @@ class ProjectController extends Controller
         }
 
         $project->update($validated);
+
+        $collaborators = $request->input('collaborators', []);
+        $collaborators[] = Auth::id();
+        $project->collaborators()->sync(array_unique($collaborators));
 
         $project->categories()->sync($validated['categories'] ?? []);
         $project->technologies()->sync($validated['technologies'] ?? []);

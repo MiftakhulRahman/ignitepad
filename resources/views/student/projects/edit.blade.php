@@ -18,23 +18,22 @@
                             'buttonText' => 'Update Proyek'
                         ])
                     </form>
-
-                    {{-- Form-form untuk hapus gambar diletakkan di sini, di luar form utama --}}
-                    @if(isset($project) && $project->images->isNotEmpty())
-                        @foreach($project->images as $image)
-                            <form id="delete-image-form-{{ $image->id }}" 
-                                  action="{{ route('student.projects.image.destroy', $image) }}" 
-                                  method="POST" 
-                                  class="hidden"
-                                  onsubmit="return confirm('Anda yakin ingin menghapus screenshot ini?');">
-                                @csrf
-                                @method('DELETE')
-                            </form>
-                        @endforeach
-                    @endif
-
                 </div>
             </div>
+
+            {{-- Form-form untuk hapus gambar diletakkan di sini, di luar form utama --}}
+            @if(isset($project) && $project->images->isNotEmpty())
+                @foreach($project->images as $image)
+                    <form id="delete-image-form-{{ $image->id }}" 
+                          action="{{ route('student.projects.image.destroy', $image) }}" 
+                          method="POST" 
+                          class="hidden"
+                          onsubmit="return confirm('Anda yakin ingin menghapus screenshot ini?');">
+                        @csrf
+                        @method('DELETE')
+                    </form>
+                @endforeach
+            @endif
         </div>
     </div>
 </x-app-layout>

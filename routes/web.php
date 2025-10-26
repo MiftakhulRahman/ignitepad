@@ -123,6 +123,9 @@ Route::middleware('auth')->prefix('api')->name('api.')->group(function () {
 
     Route::post('/projects/{project}/bookmark', [ApiBookmarkController::class, 'toggle'])
         ->name('projects.bookmark');
+
+    Route::get('/users/search', [\App\Http\Controllers\Api\UserSearchController::class, 'search'])
+        ->name('users.search');
 });
 
 // Memuat rute-rute auth bawaan Breeze (Login, Register, Lupa Password, dll)

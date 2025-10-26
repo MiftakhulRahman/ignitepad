@@ -45,11 +45,7 @@
                     <div class="relative group">
                         <img src="{{ Storage::url($image->image_path) }}" alt="Screenshot" class="h-24 w-full object-cover rounded-md border border-gray-300 dark:border-gray-700">
                         
-                        {{-- Form Hapus Gambar individual --}}
-                        <form id="delete-image-form-{{ $image->id }}" action="{{ route('student.projects.image.destroy', $image) }}" method="POST" class="hidden">
-                            @csrf
-                            @method('DELETE')
-                        </form>
+
 
                         <button type="submit" form="delete-image-form-{{ $image->id }}" 
                                 class="absolute top-0 right-0 m-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700"
@@ -84,8 +80,15 @@
         <div>
             <x-input-label for="status" :value="__('Status')" />
             <select name="status" id="status" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm">
-                <option value="draft" @selected(old('status', $project->status ?? '') == 'draft')>Draft (Simpan, jangan publikasi)</option>
-                <option value="review" @selected(old('status', $project->status ?? '') == 'review')>Review (Ajukan untuk direview Dosen)</option>
+                @php
+                    // Default ke 'review' untuk proyek baru atau jika statusnya bukan 'draft'.
+                    $defaultStatus = 'review'; 
+                    if ($project->exists && $project->status === 'draft') {
+                        $defaultStatus = 'draft';
+                    }
+                @endphp
+                <option value="draft" @selected(old('status', $defaultStatus) == 'draft')>Draft (Simpan, jangan publikasi)</option>
+                <option value="review" @selected(old('status', $defaultStatus) == 'review')>Review (Ajukan untuk direview Dosen)</option>
             </select>
             <x-input-error :messages="$errors->get('status')" class="mt-2" />
         </div>
@@ -163,70 +166,19 @@
 </div>
 
 {{-- BLOK KOLABORATOR --}}
-@if(isset($project) && $project->id) {{-- Hanya tampil saat edit --}}
 <div class="mt-6 border-t dark:border-gray-700 pt-6">
     <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
         Kolaborator Proyek
     </h3>
-    
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="md:col-span-2">
-            <div class="mb-4">
-                <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Tim Saat Ini:</h4>
-                <ul class="mt-2 space-y-2">
-                    {{-- Pemilik Proyek (Anda) --}}
-                    <li class="flex items-center justify-between bg-gray-100 dark:bg-gray-700 p-2 rounded">
-                        <div class="flex items-center">
-                            <img class="h-8 w-8 rounded-full object-cover mr-2" 
-                                 src="{{ Auth::user()->photo ? Storage::url(Auth::user()->photo) : 'https://ui-avatars.com/api/?name='.urlencode(Auth::user()->name).'&color=7F9CF5&background=EBF4FF' }}" 
-                                 alt="{{ Auth::user()->name }}">
-                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ Auth::user()->name }} (Pemilik)</span>
-                        </div>
-                    </li>
-                    {{-- Kolaborator Lain --}}
-                    @forelse ($project->collaborators as $collaborator)
-                        @if($collaborator->id !== Auth::id()) {{-- Jangan tampilkan diri sendiri lagi --}}
-                        <li class="flex items-center justify-between bg-gray-100 dark:bg-gray-700 p-2 rounded group">
-                            <div class="flex items-center">
-                                <img class="h-8 w-8 rounded-full object-cover mr-2" 
-                                     src="{{ $collaborator->photo ? Storage::url($collaborator->photo) : 'https://ui-avatars.com/api/?name='.urlencode($collaborator->name).'&color=7F9CF5&background=EBF4FF' }}" 
-                                     alt="{{ $collaborator->name }}">
-                                <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $collaborator->name }}</span>
-                            </div>
-                            {{-- Tombol Hapus: Perlu implementasi AJAX atau form terpisah --}}
-                            {{-- <button type="button" class="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100">Hapus</button> --}}
-                        </li>
-                        @endif
-                    @empty
-                        {{-- Kosong jika hanya pemilik --}}
-                    @endforelse
-                </ul>
-            </div>
-        </div>
-        
-        <div class="md:col-span-1">
-            <x-input-label for="collaborators" :value="__('Tambah Kolaborator (Cari berdasarkan NIM)')" />
-            
-            {{-- Input Teks Placeholder untuk Pencarian --}}
-            <x-text-input id="collaborators_search" type="text" class="mt-1 block w-full" placeholder="Ketik NIM mahasiswa..." />
-            
-            {{-- Input hidden untuk menyimpan ID user yang dipilih --}}
-            {{-- Catatan: Logika ini perlu disempurnakan dengan JS/TomSelect untuk dinamis --}}
-            <input type="hidden" name="collaborators[]" value="{{ Auth::id() }}"> {{-- Selalu sertakan ID pemilik --}}
 
-            @foreach ($project->collaborators as $collaborator)
-                @if($collaborator->id !== Auth::id())
-                    <input type="hidden" name="collaborators[]" value="{{ $collaborator->id }}">
-                @endif
-            @endforeach
-            
-            <small class="text-gray-500 dark:text-gray-400">Fitur pencarian dan penambahan kolaborator akan disempurnakan.</small>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="md:col-span-2">
+            <x-input-label for="collaborators" :value="__('Tambah Kolaborator (Cari berdasarkan Nama atau Email)')" />
+            <select id="collaborators" name="collaborators[]" multiple class="mt-1"></select>
             <x-input-error :messages="$errors->get('collaborators')" class="mt-2" />
-            <x-input-error :messages="$errors->get('collaborators.*')" class="mt-2" />
         </div>
     </div>
 </div>
-@endif
 {{-- AKHIR BLOK KOLABORATOR --}}
 
 <div class="flex items-center justify-end mt-6 border-t border-gray-200 dark:border-gray-700 pt-6">
@@ -237,3 +189,68 @@
         {{ $buttonText ?? 'Simpan Proyek' }}
     </x-primary-button>
 </div>
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const collaboratorSelect = new TomSelect('#collaborators',{
+            valueField: 'id',
+            labelField: 'name',
+            searchField: 'name',
+            create: false,
+            plugins: ['remove_button'],
+            load: function(query, callback) {
+                if (!query.length) return callback();
+                fetch('{{ route("api.users.search") }}?q=' + encodeURIComponent(query))
+                    .then(response => response.json())
+                    .then(json => {
+                        callback(json);
+                    }).catch(()=>{
+                        callback();
+                    });
+            },
+            render: {
+                option: function(item, escape) {
+                    return `<div>${escape(item.name)} (${escape(item.email)})</div>`;
+                },
+                item: function(item, escape) {
+                    return `<div>${escape(item.name)}</div>`;
+                }
+            },
+        });
+
+        // Pre-load existing collaborators for editing
+        @php
+            $existingCollaborators = [];
+            // Dapatkan ID kolaborator, utamakan dari input lama (setelah validasi gagal), 
+            // jika tidak ada, ambil dari relasi proyek yang sudah ada.
+            $collaboratorIds = old('collaborators', isset($project) ? $project->collaborators->pluck('id')->toArray() : []);
+
+            if (!empty($collaboratorIds)) {
+                // Ambil data lengkap (id, nama, email) dari user berdasarkan ID yang didapat.
+                $collaborators = \App\Models\User::find($collaboratorIds);
+                if ($collaborators) {
+                    $existingCollaborators = $collaborators->map(function($user) {
+                        return ['id' => $user->id, 'name' => $user->name, 'email' => $user->email];
+                    });
+                }
+            }
+        @endphp
+
+        const existingCollaborators = @json($existingCollaborators);
+
+        if (existingCollaborators.length > 0) {
+            collaboratorSelect.addOptions(existingCollaborators);
+            collaboratorSelect.setValue(existingCollaborators.map(c => c.id));
+        }
+
+        new TomSelect('#supervisor_id', {
+            create: false,
+            sortField: {
+                field: "text",
+                direction: "asc"
+            }
+        });
+    });
+</script>
+@endpush
