@@ -34,6 +34,15 @@
                             required autocomplete="new-password" />
 
             <x-input-error :messages="$errors->get('password')" class="mt-2" />
+            <div id="password-strength-container" class="hidden mt-4">
+                <div id="password-strength-indicator" class="mt-2 text-sm"></div>
+                <div class="flex mt-2 space-x-1">
+                    <span id="strength-bar-1" class="h-2 w-1/3 rounded-full bg-gray-300"></span>
+                    <span id="strength-bar-2" class="h-2 w-1/3 rounded-full bg-gray-300"></span>
+                    <span id="strength-bar-3" class="h-2 w-1/3 rounded-full bg-gray-300"></span>
+                </div>
+                <span id="password-rules-summary" class="mt-2 text-sm text-gray-600 dark:text-gray-400"></span>
+            </div>
         </div>
 
         <!-- Confirm Password -->
@@ -45,6 +54,7 @@
                             name="password_confirmation" required autocomplete="new-password" />
 
             <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
+            <span id="password-mismatch-message" class="mt-2 text-sm text-red-500"></span>
         </div>
 
         <div class="flex items-center justify-end mt-4">
@@ -63,11 +73,25 @@
     document.addEventListener('DOMContentLoaded', function () {
         const usernameInput = document.getElementById('username');
         const usernameAvailabilityMessage = document.getElementById('username-availability-message');
+        const passwordInput = document.getElementById('password');
+        const passwordConfirmationInput = document.getElementById('password_confirmation');
+        const passwordStrengthIndicator = document.getElementById('password-strength-indicator');
+        const passwordRulesSummary = document.getElementById('password-rules-summary');
+        const passwordMismatchMessage = document.getElementById('password-mismatch-message');
         const registerButton = document.getElementById('register-button');
+
+        // Password Strength Bar elements
+        const strengthBar1 = document.getElementById('strength-bar-1');
+        const strengthBar2 = document.getElementById('strength-bar-2');
+        const strengthBar3 = document.getElementById('strength-bar-3');
+
         let typingTimer;
         const doneTypingInterval = 500; // milliseconds
         let isUsernameAvailable = false;
-
+        let isPasswordStrong = false;
+        
+        // --- Username Check Logic (existing) ---
+        // ... (this part remains largely unchanged)
         if (usernameInput) {
             usernameInput.addEventListener('keyup', function () {
                 clearTimeout(typingTimer);
@@ -112,8 +136,114 @@
                 });
         }
 
+        // --- Password Strength Logic ---
+        if (passwordInput && passwordConfirmationInput) {
+            passwordInput.addEventListener('focus', () => {
+                document.getElementById('password-strength-container').classList.remove('hidden');
+            });
+            passwordInput.addEventListener('keyup', checkPasswordStrength);
+            passwordConfirmationInput.addEventListener('keyup', checkPasswordMatchAndStrength);
+        }
+
+        function checkPasswordMatchAndStrength() {
+            checkPasswordMatch();
+            checkPasswordStrength();
+        }
+
+        function checkPasswordStrength() {
+            const password = passwordInput.value;
+            let score = 0;
+            let unmetRules = [];
+
+            // Rule 1: Minimum 8 characters
+            const hasLength = password.length >= 8;
+            if (hasLength) score++; else unmetRules.push('8+ karakter');
+
+            // Rule 2: Minimal 1 huruf besar (A-Z)
+            const hasUppercase = /[A-Z]/.test(password);
+            if (hasUppercase) score++; else unmetRules.push('1+ huruf besar');
+
+            // Rule 3: Minimal 1 huruf kecil (a-z)
+            const hasLowercase = /[a-z]/.test(password);
+            if (hasLowercase) score++; else unmetRules.push('1+ huruf kecil');
+
+            // Rule 4: Minimal 1 angka (0-9)
+            const hasNumber = /[0-9]/.test(password);
+            if (hasNumber) score++; else unmetRules.push('1+ angka');
+
+            // Rule 5: Minimal 1 karakter khusus
+            const hasSpecial = /[^A-Za-z0-9]/.test(password);
+            if (hasSpecial) score++; else unmetRules.push('1+ karakter khusus');
+
+            // Update concise rules summary
+            if (unmetRules.length > 0 && password.length > 0) {
+                passwordRulesSummary.textContent = 'Kata sandi minimal 8 karakter, mengandung huruf besar, angka, dan karakter khusus.';
+                passwordRulesSummary.classList.remove('text-green-500');
+                passwordRulesSummary.classList.add('text-red-500');
+            } else if (password.length > 0) {
+                passwordRulesSummary.textContent = 'Semua syarat terpenuhi.';
+                passwordRulesSummary.classList.remove('text-red-500');
+                passwordRulesSummary.classList.add('text-green-500');
+            } else {
+                passwordRulesSummary.textContent = '';
+                passwordRulesSummary.classList.remove('text-red-500', 'text-green-500');
+            }
+
+            // Update strength bar
+            strengthBar1.classList.remove('bg-red-500', 'bg-orange-500', 'bg-green-500');
+            strengthBar2.classList.remove('bg-red-500', 'bg-orange-500', 'bg-green-500');
+            strengthBar3.classList.remove('bg-red-500', 'bg-orange-500', 'bg-green-500');
+
+            if (password.length === 0) {
+                strengthBar1.classList.add('bg-gray-300');
+                strengthBar2.classList.add('bg-gray-300');
+                strengthBar3.classList.add('bg-gray-300');
+                passwordStrengthIndicator.textContent = '';
+            } else if (score < 3) {
+                strengthBar1.classList.add('bg-red-500');
+                strengthBar2.classList.add('bg-gray-300');
+                strengthBar3.classList.add('bg-gray-300');
+                passwordStrengthIndicator.textContent = 'Lemah';
+                passwordStrengthIndicator.className = 'mt-2 text-sm text-red-500';
+            } else if (score < 5) {
+                strengthBar1.classList.add('bg-orange-500');
+                strengthBar2.classList.add('bg-orange-500');
+                strengthBar3.classList.add('bg-gray-300');
+                passwordStrengthIndicator.textContent = 'Sedang';
+                passwordStrengthIndicator.className = 'mt-2 text-sm text-orange-500';
+            } else {
+                strengthBar1.classList.add('bg-green-500');
+                strengthBar2.classList.add('bg-green-500');
+                strengthBar3.classList.add('bg-green-500');
+                passwordStrengthIndicator.textContent = 'Kuat';
+                passwordStrengthIndicator.className = 'mt-2 text-sm text-green-500';
+            }
+
+            // Only set isPasswordStrong to true if all rules are met AND passwords match
+            // The match check is handled by checkPasswordMatch
+            isPasswordStrong = (score === 5);
+            toggleRegisterButton();
+        }
+
+        function checkPasswordMatch() {
+            const password = passwordInput.value;
+            const passwordConfirmation = passwordConfirmationInput.value;
+
+            if (password.length > 0 && passwordConfirmation.length > 0 && password !== passwordConfirmation) {
+                passwordMismatchMessage.textContent = 'Kata sandi tidak cocok.';
+            } else {
+                passwordMismatchMessage.textContent = '';
+            }
+            toggleRegisterButton();
+        }
+
+        // --- Combined Button Toggle Logic ---
         function toggleRegisterButton() {
-            if (isUsernameAvailable && usernameInput.value.length > 0) {
+            const isUsernameFilled = usernameInput.value.length > 0;
+            const isPasswordFilled = passwordInput.value.length > 0;
+            const isPasswordConfirmed = (passwordInput.value === passwordConfirmationInput.value && passwordInput.value.length > 0);
+
+            if (isUsernameAvailable && isUsernameFilled && isPasswordStrong && isPasswordConfirmed && isPasswordFilled) {
                 registerButton.removeAttribute('disabled');
                 registerButton.classList.remove('opacity-50', 'cursor-not-allowed');
             } else {
@@ -122,11 +252,14 @@
             }
         }
 
-        // Initial check on page load if username field has a value (e.g., old input)
+        // Initial checks on page load
         if (usernameInput.value) {
             checkUsernameAvailability();
-        } else {
-            toggleRegisterButton(); // Disable button initially if username is empty
         }
+        // Initial password check only if password field has value
+        if (passwordInput.value) {
+            checkPasswordStrength();
+        }
+        toggleRegisterButton(); // Ensure button state is correct on load
     });
 </script>
