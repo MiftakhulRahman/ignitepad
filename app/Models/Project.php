@@ -43,7 +43,7 @@ class Project extends Model
 
         static::creating(function ($project) {
             if (empty($project->slug)) {
-                $project->slug = Str::slug($project->title) . '-' . uniqid();
+                $project->slug = Str::slug($project->title);
             }
         });
     }
