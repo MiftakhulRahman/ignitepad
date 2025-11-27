@@ -46,23 +46,26 @@ const isActive = (routeName) => route().current(routeName);
         class="fixed left-0 top-0 z-40 h-screen bg-white border-r border-gray-200 transition-all duration-300 ease-in-out flex flex-col"
         :class="isOpen ? 'w-64' : 'w-20'"
     >
-        <div class="flex h-16 items-center border-b border-gray-200 shrink-0 transition-all duration-300"
+        <div class="h-16 flex items-center border-b border-gray-200 shrink-0 transition-all duration-300"
             :class="isOpen ? 'px-6 justify-start' : 'justify-center px-0'"
         >
-            <Link :href="route('dashboard')" class="flex items-center gap-2 overflow-hidden">
-                <div class="bg-indigo-600 text-white p-1.5 rounded-lg shrink-0">
+            <Link :href="route('dashboard')" class="flex items-center gap-2 overflow-hidden w-full"
+                :class="isOpen ? '' : 'justify-center'"
+            >
+                <div class="bg-indigo-600 text-white p-1.5 rounded-lg shrink-0 flex items-center justify-center transition-all duration-300">
                     <Rocket :size="24" />
                 </div>
+                
                 <span 
                     class="text-xl font-bold text-gray-800 transition-opacity duration-300 whitespace-nowrap"
-                    :class="isOpen ? 'opacity-100' : 'opacity-0 w-0'"
+                    :class="isOpen ? 'opacity-100' : 'opacity-0 w-0 hidden'"
                 >
                     IgnitePad
                 </span>
             </Link>
         </div>
 
-        <div class="flex-1 overflow-y-auto py-4 overflow-x-hidden hover:overflow-y-auto">
+        <div class="flex-1 overflow-y-auto py-4 overflow-x-hidden hover:overflow-y-auto custom-scrollbar">
             <nav class="space-y-2 px-3">
                 
                 <div v-for="(group, index) in menuGroups" :key="index">
@@ -90,11 +93,17 @@ const isActive = (routeName) => route().current(routeName);
                                 <component :is="item.icon" :size="22" class="shrink-0" />
                                 
                                 <span 
-                                    class="font-medium whitespace-nowrap transition-all duration-300 origin-left"
-                                    :class="isOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 absolute left-full ml-2 bg-gray-800 text-white text-xs px-2 py-1 rounded hidden group-hover:block z-50'"
+                                    class="font-medium whitespace-nowrap transition-all duration-300"
+                                    :class="isOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'"
                                 >
                                     {{ item.name }}
                                 </span>
+
+                                <div v-if="!isOpen" 
+                                    class="absolute left-full ml-6 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity"
+                                >
+                                    {{ item.name }}
+                                </div>
                             </Link>
                         </li>
                     </ul>
@@ -104,3 +113,17 @@ const isActive = (routeName) => route().current(routeName);
         </div>
     </aside>
 </template>
+
+<style scoped>
+/* Scrollbar halus untuk webkit */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.5);
+    border-radius: 20px;
+}
+</style>

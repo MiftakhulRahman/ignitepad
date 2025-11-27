@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -31,30 +30,39 @@ Route::middleware(['auth', 'verified'])->group(function () {
         })->name('dashboard');
 
         // --- PROYEK ---
-        Route::get('/proyek', function () { 
-            return Inertia::render('Dashboard'); 
+        Route::get('/proyek', function () {
+            return Inertia::render('Dashboard');
         })->name('proyek.index');
 
-        Route::get('/proyek/saya', function () { 
-            return Inertia::render('Dashboard'); 
+        Route::get('/proyek/saya', function () {
+            return Inertia::render('Dashboard');
         })->name('proyek.saya');
 
         // --- CHALLENGE ---
-        Route::get('/challenge', function () { 
-            return Inertia::render('Dashboard'); 
+        Route::get('/challenge', function () {
+            return Inertia::render('Dashboard');
         })->name('challenge.index');
 
         // --- MASTER DATA ---
-        Route::get('/pengguna', function () { 
-            return Inertia::render('Dashboard'); 
+        Route::get('/pengguna', function () {
+            return Inertia::render('Dashboard');
         })->name('pengguna.index');
 
-        Route::get('/kategori', function () { 
-            return Inertia::render('Dashboard'); 
-        })->name('kategori.index');
+        // CRUD Kategori
+        Route::get('/kategori', [App\Http\Controllers\Admin\KategoriController::class, 'index'])
+            ->name('kategori.index');
+        Route::post('/kategori', [App\Http\Controllers\Admin\KategoriController::class, 'store'])
+            ->name('kategori.store');
+        Route::put('/kategori/{id}', [App\Http\Controllers\Admin\KategoriController::class, 'update'])
+            ->name('kategori.update');
+        Route::patch('/kategori/{id}/toggle', [App\Http\Controllers\Admin\KategoriController::class, 'toggleStatus'])->name('kategori.toggle');
+        Route::delete('/kategori/{id}', [App\Http\Controllers\Admin\KategoriController::class, 'destroy'])
+            ->name('kategori.destroy');
+        Route::get('/kategori/export', [App\Http\Controllers\Admin\KategoriController::class, 'export'])->name('kategori.export');
+        Route::post('/kategori/bulk-delete', [App\Http\Controllers\Admin\KategoriController::class, 'bulkDestroy'])->name('kategori.bulk-delete');
 
-        Route::get('/teknologi', function () { 
-            return Inertia::render('Dashboard'); 
+        Route::get('/teknologi', function () {
+            return Inertia::render('Dashboard');
         })->name('teknologi.index');
 
         // Profil User
