@@ -7,23 +7,27 @@ import { Head } from '@inertiajs/vue3';
     <Head title="Dashboard" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <h2
-                class="text-xl font-semibold leading-tight text-gray-800"
-            >
-                Dashboard
-            </h2>
-        </template>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div class="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                <h3 class="text-gray-500 text-sm font-medium">Total Proyek</h3>
+                <p class="text-3xl font-bold text-gray-800 mt-2">12</p>
+            </div>
+            <div class="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                <h3 class="text-gray-500 text-sm font-medium">Challenge Aktif</h3>
+                <p class="text-3xl font-bold text-gray-800 mt-2">3</p>
+            </div>
+            <div class="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                <h3 class="text-gray-500 text-sm font-medium">Total Poin</h3>
+                <p class="text-3xl font-bold text-gray-800 mt-2">1,240</p>
+            </div>
+        </div>
 
-        <div class="py-12">
-            <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                <div
-                    class="overflow-hidden bg-white shadow-sm sm:rounded-lg"
-                >
-                    <div class="p-6 text-gray-900">
-                        You're logged in!
-                    </div>
-                </div>
+        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100">
+            <div class="p-6 text-gray-900">
+                <h3 class="text-lg font-semibold mb-4">Selamat Datang di IgnitePad!</h3>
+                <p class="text-gray-600">
+                    Sistem sudah siap. Coba klik tombol hamburger di pojok kiri atas untuk melihat sidebar melipat dan membuka.
+                </p>
             </div>
         </div>
     </AuthenticatedLayout>
