@@ -1,45 +1,55 @@
 <script setup>
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import { 
-    LayoutDashboard, 
-    Rocket, 
-    Trophy, 
-    Users, 
-    Layers, 
-    Cpu, 
-    MoreHorizontal,
-    GraduationCap // Import Icon Baru
+    LayoutDashboard, Rocket, Trophy, Users, Layers, Cpu, 
+    MoreHorizontal, GraduationCap, Briefcase 
 } from 'lucide-vue-next';
 
 const props = defineProps({
     isOpen: Boolean,
 });
 
-const menuGroups = [
+const page = usePage();
+const userRoles = computed(() => page.props.auth.user.perans.map(r => r.slug));
+
+// Helper function untuk cek role
+const hasRole = (roles) => {
+    // Jika user punya salah satu dari roles yang diminta
+    return roles.some(r => userRoles.value.includes(r));
+};
+
+// MENU CONFIGURATION
+const menuGroups = computed(() => [
     {
         groupName: '', 
         items: [
-            { name: 'Dashboard', route: 'dashboard', icon: LayoutDashboard },
+            { name: 'Dashboard', route: 'dashboard', icon: LayoutDashboard, show: true },
         ]
     },
     {
         groupName: 'Menu Utama',
         items: [
-            { name: 'Jelajah Proyek', route: 'proyek.index', icon: Rocket },
-            { name: 'Challenge', route: 'challenge.index', icon: Trophy },
-        ]
+            // ADMIN: Jelajah Proyek (Untuk Memantau Semua Proyek)
+            { name: 'Jelajah Proyek', route: 'proyek.index', icon: Rocket, show: hasRole(['superadmin']) },
+            
+            // MAHASISWA & DOSEN: Proyek Saya (Untuk Mengelola Proyek Sendiri)
+            { name: 'Proyek Saya', route: 'proyek.saya', icon: Briefcase, show: hasRole(['mahasiswa', 'dosen']) },
+            
+            // CHALLENGE: Semua bisa lihat
+            { name: 'Challenge', route: 'challenge.index', icon: Trophy, show: true },
+        ].filter(item => item.show)
     },
     {
-        groupName: 'Master Data',
+        groupName: 'Admin Area',
         items: [
-            // Menu Baru: Program Studi
-            { name: 'Program Studi', route: 'prodi.index', icon: GraduationCap },
-            { name: 'Pengguna', route: 'pengguna.index', icon: Users },
-            { name: 'Kategori', route: 'kategori.index', icon: Layers },
-            { name: 'Teknologi', route: 'teknologi.index', icon: Cpu },
-        ]
+            { name: 'Kelola Program Studi', route: 'prodi.index', icon: GraduationCap, show: hasRole(['superadmin']) },
+            { name: 'Kelola Pengguna', route: 'pengguna.index', icon: Users, show: hasRole(['superadmin']) },
+            { name: 'Kelola Kategori', route: 'kategori.index', icon: Layers, show: hasRole(['superadmin']) },
+            { name: 'Kelola Teknologi', route: 'teknologi.index', icon: Cpu, show: hasRole(['superadmin']) },
+        ].filter(item => item.show)
     }
-];
+].filter(group => group.items.length > 0));
 
 const isActive = (routeName) => route().current(routeName);
 </script>
