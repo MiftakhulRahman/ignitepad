@@ -44,9 +44,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         })->name('challenge.index');
 
         // --- MASTER DATA ---
-        Route::get('/pengguna', function () {
-            return Inertia::render('Dashboard');
-        })->name('pengguna.index');
+        // CRUD Pengguna (User Management)
+        Route::get('/pengguna', [App\Http\Controllers\Admin\PenggunaController::class, 'index'])->name('pengguna.index');
+        Route::post('/pengguna', [App\Http\Controllers\Admin\PenggunaController::class, 'store'])->name('pengguna.store');
+        Route::put('/pengguna/{id}', [App\Http\Controllers\Admin\PenggunaController::class, 'update'])->name('pengguna.update');
+        Route::delete('/pengguna/{id}', [App\Http\Controllers\Admin\PenggunaController::class, 'destroy'])->name('pengguna.destroy');
+        Route::patch('/pengguna/{id}/toggle', [App\Http\Controllers\Admin\PenggunaController::class, 'toggleStatus'])->name('pengguna.toggle');
+        Route::post('/pengguna/bulk-delete', [App\Http\Controllers\Admin\PenggunaController::class, 'bulkDestroy'])->name('pengguna.bulk-delete');
+        Route::get('/pengguna/export', [App\Http\Controllers\Admin\PenggunaController::class, 'export'])->name('pengguna.export');
 
         // CRUD Kategori
         Route::get('/kategori', [App\Http\Controllers\Admin\KategoriController::class, 'index'])
@@ -61,9 +66,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/kategori/export', [App\Http\Controllers\Admin\KategoriController::class, 'export'])->name('kategori.export');
         Route::post('/kategori/bulk-delete', [App\Http\Controllers\Admin\KategoriController::class, 'bulkDestroy'])->name('kategori.bulk-delete');
 
-        Route::get('/teknologi', function () {
-            return Inertia::render('Dashboard');
-        })->name('teknologi.index');
+        // CRUD Teknologi - Ultimate
+        Route::get('/teknologi', [App\Http\Controllers\Admin\TeknologiController::class, 'index'])->name('teknologi.index');
+        Route::post('/teknologi', [App\Http\Controllers\Admin\TeknologiController::class, 'store'])->name('teknologi.store');
+        Route::put('/teknologi/{id}', [App\Http\Controllers\Admin\TeknologiController::class, 'update'])->name('teknologi.update');
+        Route::delete('/teknologi/{id}', [App\Http\Controllers\Admin\TeknologiController::class, 'destroy'])->name('teknologi.destroy');
+
+        // Fitur Tambahan
+        Route::patch('/teknologi/{id}/toggle', [App\Http\Controllers\Admin\TeknologiController::class, 'toggleStatus'])->name('teknologi.toggle');
+        Route::post('/teknologi/bulk-delete', [App\Http\Controllers\Admin\TeknologiController::class, 'bulkDestroy'])->name('teknologi.bulk-delete');
+        Route::get('/teknologi/export', [App\Http\Controllers\Admin\TeknologiController::class, 'export'])->name('teknologi.export');
+
+        // CRUD Program Studi
+        Route::get('/program-studi', [App\Http\Controllers\Admin\ProdiController::class, 'index'])->name('prodi.index');
+        Route::post('/program-studi', [App\Http\Controllers\Admin\ProdiController::class, 'store'])->name('prodi.store');
+        Route::put('/program-studi/{id}', [App\Http\Controllers\Admin\ProdiController::class, 'update'])->name('prodi.update');
+        Route::delete('/program-studi/{id}', [App\Http\Controllers\Admin\ProdiController::class, 'destroy'])->name('prodi.destroy');
+        Route::post('/program-studi/bulk-delete', [App\Http\Controllers\Admin\ProdiController::class, 'bulkDestroy'])->name('prodi.bulk-delete');
+        Route::get('/program-studi/export', [App\Http\Controllers\Admin\ProdiController::class, 'export'])->name('prodi.export');
 
         // Profil User
         Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

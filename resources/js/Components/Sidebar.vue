@@ -7,7 +7,8 @@ import {
     Users, 
     Layers, 
     Cpu, 
-    MoreHorizontal 
+    MoreHorizontal,
+    GraduationCap // Import Icon Baru
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -31,6 +32,8 @@ const menuGroups = [
     {
         groupName: 'Master Data',
         items: [
+            // Menu Baru: Program Studi
+            { name: 'Program Studi', route: 'prodi.index', icon: GraduationCap },
             { name: 'Pengguna', route: 'pengguna.index', icon: Users },
             { name: 'Kategori', route: 'kategori.index', icon: Layers },
             { name: 'Teknologi', route: 'teknologi.index', icon: Cpu },
@@ -115,7 +118,6 @@ const isActive = (routeName) => route().current(routeName);
 </template>
 
 <style scoped>
-/* Scrollbar halus untuk webkit */
 .custom-scrollbar::-webkit-scrollbar {
     width: 4px;
 }

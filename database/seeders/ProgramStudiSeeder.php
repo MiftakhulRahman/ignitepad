@@ -12,7 +12,7 @@ class ProgramStudiSeeder extends Seeder
         $prodis = [
             [
                 'nama' => 'Informatika',
-                'fakultas' => 'Sains dan Teknologi',
+                'fakultas' => 'Fakultas Sains dan Teknologi',
                 'kode' => 'INF'
             ],
             [
