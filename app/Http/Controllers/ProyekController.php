@@ -129,9 +129,30 @@ class ProyekController extends Controller
         // Hitung View (Simpel)
         $proyek->increment('jumlah_lihat');
 
+        $user = auth()->user();
+
         return Inertia::render('Proyek/Detail', [
             'proyek' => $proyek,
-            'isOwner' => auth()->id() === $proyek->user_id,
+            'isOwner' => $user && $user->id === $proyek->user_id,
+            'hasLiked' => $user ? $proyek->isLikedBy($user) : false,
+            // Cek manual simpanan jika belum ada method isSavedBy
+            'hasSaved' => $user ? \App\Models\Simpanan::where('user_id', $user->id)->where('proyek_id', $proyek->id)->exists() : false,
+            'komentars' => $proyek->komentar()
+                ->whereNull('induk_id') // Hanya ambil komentar induk
+                ->with(['user', 'likes', 'balasan.user', 'balasan.likes']) // Eager load balasan & likes
+                ->latest()
+                ->get()
+                ->map(function ($komentar) use ($user) {
+                    $komentar->is_liked = $user ? $komentar->likes->contains('user_id', $user->id) : false;
+                    
+                    // Map balasan juga
+                    $komentar->balasan = $komentar->balasan->map(function ($balasan) use ($user) {
+                        $balasan->is_liked = $user ? $balasan->likes->contains('user_id', $user->id) : false;
+                        return $balasan;
+                    });
+                    
+                    return $komentar;
+                }),
         ]);
     }
 

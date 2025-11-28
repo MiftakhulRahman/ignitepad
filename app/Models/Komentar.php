@@ -27,4 +27,9 @@ class Komentar extends Model
     {
         return $this->hasMany(Komentar::class, 'induk_id');
     }
+
+    public function likes()
+    {
+        return $this->morphMany(Suka::class, 'likeable');
+    }
 }

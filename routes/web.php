@@ -24,13 +24,11 @@ Route::get('/', function () {
     ]);
 })->name('beranda');
 
-// 2. Jelajah Proyek & Detail (Public Read-Only)
+// 2. Jelajah Proyek (Public List)
 Route::get('/proyek', [App\Http\Controllers\ProyekController::class, 'index'])->name('proyek.index');
-Route::get('/proyek/{slug}', [App\Http\Controllers\ProyekController::class, 'show'])->name('proyek.show');
 
-// 3. Challenge List & Detail (Public Read-Only)
+// 3. Challenge List (Public List)
 Route::get('/challenge', [App\Http\Controllers\ChallengeController::class, 'index'])->name('challenge.index');
-Route::get('/challenge/{slug}', [App\Http\Controllers\ChallengeController::class, 'show'])->name('challenge.show');
 
 // --- AUTHENTICATED ROUTES (Harus Login) ---
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -53,8 +51,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/proyek/{id}', [App\Http\Controllers\ProyekController::class, 'destroy'])->name('proyek.destroy');
         
         // Interaksi (Like/Save)
-        // Route::post('/proyek/{proyek}/suka', [App\Http\Controllers\InteraksiController::class, 'toggleLike'])->name('proyek.like');
-        // Route::post('/proyek/{proyek}/simpan', [App\Http\Controllers\InteraksiController::class, 'toggleSave'])->name('proyek.save');
+        // Interaksi (Like/Save)
+        Route::post('/proyek/{id}/suka', [App\Http\Controllers\InteraksiController::class, 'toggleLike'])->name('proyek.like');
+        Route::post('/proyek/{id}/simpan', [App\Http\Controllers\InteraksiController::class, 'toggleSave'])->name('proyek.save');
+        
+        // Komentar
+        Route::post('/proyek/{id}/komentar', [App\Http\Controllers\KomentarController::class, 'store'])->name('komentar.store');
+        Route::put('/komentar/{id}', [App\Http\Controllers\KomentarController::class, 'update'])->name('komentar.update');
+        Route::delete('/komentar/{id}', [App\Http\Controllers\KomentarController::class, 'destroy'])->name('komentar.destroy');
+        Route::post('/komentar/{id}/suka', [App\Http\Controllers\InteraksiController::class, 'toggleLikeKomentar'])->name('komentar.like');
 
         // Challenge (Create & Submit)
         Route::get('/challenge/buat', [App\Http\Controllers\ChallengeController::class, 'create'])->name('challenge.create');
@@ -111,3 +116,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+// --- WILDCARD ROUTES (Must be at the bottom) ---
+// Detail Proyek & Challenge (Public Read-Only)
+// Ditaruh di bawah agar tidak menimpa route spesifik seperti /proyek/saya atau /challenge/buat
+Route::get('/proyek/{slug}', [App\Http\Controllers\ProyekController::class, 'show'])->name('proyek.show');
+Route::get('/challenge/{slug}', [App\Http\Controllers\ChallengeController::class, 'show'])->name('challenge.show');
