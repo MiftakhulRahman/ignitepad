@@ -12,6 +12,9 @@ class Komentar extends Model
 
     protected $guarded = ['id'];
 
+    // Append virtual attributes
+    protected $appends = ['jumlah_balasan'];
+
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -31,5 +34,16 @@ class Komentar extends Model
     public function likes()
     {
         return $this->morphMany(Suka::class, 'likeable');
+    }
+
+    public function dislikes()
+    {
+        return $this->morphMany(Dislike::class, 'dislikeable');
+    }
+
+    // Virtual attribute untuk jumlah balasan
+    public function getJumlahBalasanAttribute()
+    {
+        return $this->balasan()->count();
     }
 }

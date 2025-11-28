@@ -11,9 +11,18 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('komentar_dislikes', function (Blueprint $table) {
+        Schema::create('dislikes', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            
+            // Polymorphic: bisa dislike Proyek atau Komentar
+            // Akan membuat kolom: dislikeable_type dan dislikeable_id
+            $table->morphs('dislikeable'); 
+            
             $table->timestamps();
+            
+            // Mencegah user dislike hal yang sama 2x
+            $table->unique(['user_id', 'dislikeable_type', 'dislikeable_id']);
         });
     }
 
@@ -22,6 +31,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('komentar_dislikes');
+        Schema::dropIfExists('dislikes');
     }
 };

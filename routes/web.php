@@ -59,7 +59,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/proyek/{id}/komentar', [App\Http\Controllers\KomentarController::class, 'store'])->name('komentar.store');
         Route::put('/komentar/{id}', [App\Http\Controllers\KomentarController::class, 'update'])->name('komentar.update');
         Route::delete('/komentar/{id}', [App\Http\Controllers\KomentarController::class, 'destroy'])->name('komentar.destroy');
-        Route::post('/komentar/{id}/suka', [App\Http\Controllers\InteraksiController::class, 'toggleLikeKomentar'])->name('komentar.like');
+        Route::post('/komentar/{id}/suka', [App\Http\Controllers\KomentarController::class, 'like'])->name('komentar.like');
+        Route::post('/komentar/{id}/dislike', [App\Http\Controllers\KomentarController::class, 'dislike'])->name('komentar.dislike');
 
         // Challenge (Create & Submit)
         Route::get('/challenge/buat', [App\Http\Controllers\ChallengeController::class, 'create'])->name('challenge.create');

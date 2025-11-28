@@ -139,15 +139,22 @@ class ProyekController extends Controller
             'hasSaved' => $user ? \App\Models\Simpanan::where('user_id', $user->id)->where('proyek_id', $proyek->id)->exists() : false,
             'komentars' => $proyek->komentar()
                 ->whereNull('induk_id') // Hanya ambil komentar induk
-                ->with(['user', 'likes', 'balasan.user', 'balasan.likes']) // Eager load balasan & likes
+                ->with(['user', 'likes', 'dislikes', 'balasan.user', 'balasan.likes', 'balasan.dislikes']) // Eager load balasan, likes & dislikes
+                ->withCount(['likes', 'dislikes']) // Count likes and dislikes
                 ->latest()
                 ->get()
                 ->map(function ($komentar) use ($user) {
                     $komentar->is_liked = $user ? $komentar->likes->contains('user_id', $user->id) : false;
+                    $komentar->is_disliked = $user ? $komentar->dislikes->contains('user_id', $user->id) : false;
+                    $komentar->jumlah_suka = $komentar->likes_count;
+                    $komentar->jumlah_dislikes = $komentar->dislikes_count;
                     
                     // Map balasan juga
                     $komentar->balasan = $komentar->balasan->map(function ($balasan) use ($user) {
                         $balasan->is_liked = $user ? $balasan->likes->contains('user_id', $user->id) : false;
+                        $balasan->is_disliked = $user ? $balasan->dislikes->contains('user_id', $user->id) : false;
+                        $balasan->jumlah_suka = $balasan->likes->count();
+                        $balasan->jumlah_dislikes = $balasan->dislikes->count();
                         return $balasan;
                     });
                     
