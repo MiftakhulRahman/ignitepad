@@ -23,36 +23,51 @@ class ProyekController extends Controller
         // Cek apakah user adalah Superadmin (Handle Guest)
         $isAdmin = $user && $user->perans->contains('slug', 'superadmin');
 
-        $query = Proyek::query()->with(['user', 'kategori', 'teknologi']);
-
-        // LOGIKA FILTER:
+        // ADMIN MODE: Lihat semua proyek (bypass public filter)
         if ($isAdmin) {
-            // ADMIN: Bisa lihat semua, dan bisa filter berdasarkan status
-            // Jika ada request 'status', filter by status. Jika tidak, tampilkan semua.
+            $query = Proyek::with(['user', 'kategori', 'teknologi', 'kolaborators.user', 'user.prodi'])
+                ->withCount('komentar');
+            
+            // Admin can filter by status
             if ($request->status) {
                 $query->where('status', $request->status);
             }
-        } else {
-            // PUBLIC/MAHASISWA/DOSEN: Hanya lihat yang terbit & publik
-            // Kecuali proyek miliknya sendiri (opsional, biasanya punya halaman sendiri)
-            $query->where('status', 'terbit')
-                ->where('visibilitas', 'publik');
+            
+            // Search filter
+            if ($request->search) {
+                $query->where('judul', 'like', "%{$request->search}%");
+            }
+            
+            $proyeks = $query->latest()
+                ->paginate(12)
+                ->withQueryString();
+            
+            return Inertia::render('Proyek/Saya', [
+                'proyeks' => $proyeks,
+                'isAdminMode' => true,
+                'filters' => $request->only(['search', 'status']),
+            ]);
         }
+        
+        // PUBLIC/MAHASISWA/DOSEN: Hanya lihat yang terbit & publik
+        $query = Proyek::query()->with(['user', 'kategori', 'teknologi']);
+        $query->where('status', 'terbit')
+            ->where('visibilitas', 'publik');
 
-        // Search Filter (Tambahan)
+        // Search Filter
         if ($request->search) {
             $query->where('judul', 'like', "%{$request->search}%");
         }
 
         $proyeks = $query->latest('terbit_pada')
-            ->latest('created_at') // Fallback sort buat draft
+            ->latest('created_at')
             ->paginate(12)
             ->withQueryString();
 
         return Inertia::render('Proyek/Index', [
             'proyeks' => $proyeks,
             'filters' => $request->only(['search', 'status']),
-            'isAdmin' => $isAdmin, // Kirim status admin ke frontend
+            'isAdmin' => false,
         ]);
     }
 
@@ -60,6 +75,11 @@ class ProyekController extends Controller
     public function saya(Request $request)
     {
         $user = auth()->user();
+        
+        // Redirect admin to management page (index)
+        if ($user->perans->contains('slug', 'superadmin')) {
+            return redirect()->route('proyek.index');
+        }
 
         $proyeks = Proyek::where('user_id', $user->id)
             ->with(['kategori', 'teknologi', 'kolaborators.user', 'user.prodi'])
@@ -69,6 +89,7 @@ class ProyekController extends Controller
 
         return Inertia::render('Proyek/Saya', [
             'proyeks' => $proyeks,
+            'isAdminMode' => false,
         ]);
     }
 
@@ -91,8 +112,7 @@ class ProyekController extends Controller
             'deskripsi' => 'nullable|max:255',
             'konten_html' => 'required',
             'thumbnail' => 'required|image|mimes:jpg,jpeg,png|max:1024|dimensions:min_width=800,min_height=450',
-            'galeri' => 'nullable|array|max:2',
-            'galeri.*' => 'image|mimes:jpg,jpeg,png|max:1024',
+
             'teknologi_ids' => 'required|array|min:1',
             'teknologi_ids.*' => 'exists:teknologis,id',
             'url_demo' => 'nullable|url',
@@ -101,6 +121,26 @@ class ProyekController extends Controller
             'visibilitas' => 'in:publik,terbatas,privat',
             'boleh_komentar' => 'boolean',
             'kolaborators' => 'nullable|array',
+        ], [
+            'judul.required' => 'Judul proyek wajib diisi.',
+            'judul.max' => 'Judul proyek maksimal 255 karakter.',
+            'kategori_id.required' => 'Kategori proyek wajib dipilih.',
+            'kategori_id.exists' => 'Kategori proyek tidak valid.',
+            'deskripsi.max' => 'Deskripsi maksimal 255 karakter.',
+            'konten_html.required' => 'Konten detail proyek wajib diisi.',
+            'thumbnail.required' => 'Thumbnail proyek wajib diupload.',
+            'thumbnail.image' => 'Thumbnail harus berupa file gambar.',
+            'thumbnail.mimes' => 'Thumbnail harus berformat jpg, jpeg, atau png.',
+            'thumbnail.max' => 'Ukuran thumbnail maksimal 1MB.',
+            'thumbnail.dimensions' => 'Dimensi thumbnail minimal 800x450 pixel.',
+            'teknologi_ids.required' => 'Pilih minimal satu teknologi.',
+            'teknologi_ids.min' => 'Pilih minimal satu teknologi.',
+            'teknologi_ids.*.exists' => 'Teknologi yang dipilih tidak valid.',
+            'url_demo.url' => 'Link demo harus berupa URL yang valid (contoh: https://example.com).',
+            'url_repository.url' => 'Link repository harus berupa URL yang valid (contoh: https://github.com/username/repo).',
+            'status.in' => 'Status tidak valid.',
+            'visibilitas.in' => 'Visibilitas tidak valid.',
+            'boleh_komentar.boolean' => 'Nilai komentar tidak valid.',
         ]);
 
         DB::transaction(function () use ($request) {
@@ -110,13 +150,7 @@ class ProyekController extends Controller
                 $thumbnailPath = $request->file('thumbnail')->store('proyek/thumbnails', 'public');
             }
 
-            // 2. Upload Galeri (Multiple)
-            $galeriPaths = [];
-            if ($request->hasFile('galeri')) {
-                foreach ($request->file('galeri') as $file) {
-                    $galeriPaths[] = $file->store('proyek/galeri', 'public');
-                }
-            }
+
 
             // 3. Simpan Data Utama
             $proyek = Proyek::create([
@@ -126,7 +160,6 @@ class ProyekController extends Controller
                 'deskripsi' => $request->deskripsi,
                 'konten_html' => $request->konten_html,
                 'thumbnail' => $thumbnailPath, // Path file
-                'galeri_gambar' => $galeriPaths, // Array path (otomatis jadi JSON karena casting di Model)
                 'url_demo' => $request->url_demo,
                 'url_repository' => $request->url_repository,
                 'status' => $request->status,
@@ -242,9 +275,7 @@ class ProyekController extends Controller
             'deskripsi' => 'nullable|max:255',
             'konten_html' => 'required',
             'thumbnail' => 'nullable|image|mimes:jpg,jpeg,png|max:1024|dimensions:min_width=800,min_height=450',
-            'galeri' => 'nullable|array|max:2',
-            'galeri.*' => 'image|mimes:jpg,jpeg,png|max:1024',
-            'existing_galeri' => 'nullable|array|max:2',
+
             'teknologi_ids' => 'required|array|min:1',
             'teknologi_ids.*' => 'exists:teknologis,id',
             'url_demo' => 'nullable|url',
@@ -253,6 +284,25 @@ class ProyekController extends Controller
             'visibilitas' => 'in:publik,terbatas,privat',
             'boleh_komentar' => 'boolean',
             'kolaborators' => 'nullable|array',
+        ], [
+            'judul.required' => 'Judul proyek wajib diisi.',
+            'judul.max' => 'Judul proyek maksimal 255 karakter.',
+            'kategori_id.required' => 'Kategori proyek wajib dipilih.',
+            'kategori_id.exists' => 'Kategori proyek tidak valid.',
+            'deskripsi.max' => 'Deskripsi maksimal 255 karakter.',
+            'konten_html.required' => 'Konten detail proyek wajib diisi.',
+            'thumbnail.image' => 'Thumbnail harus berupa file gambar.',
+            'thumbnail.mimes' => 'Thumbnail harus berformat jpg, jpeg, atau png.',
+            'thumbnail.max' => 'Ukuran thumbnail maksimal 1MB.',
+            'thumbnail.dimensions' => 'Dimensi thumbnail minimal 800x450 pixel.',
+            'teknologi_ids.required' => 'Pilih minimal satu teknologi.',
+            'teknologi_ids.min' => 'Pilih minimal satu teknologi.',
+            'teknologi_ids.*.exists' => 'Teknologi yang dipilih tidak valid.',
+            'url_demo.url' => 'Link demo harus berupa URL yang valid (contoh: https://example.com).',
+            'url_repository.url' => 'Link repository harus berupa URL yang valid (contoh: https://github.com/username/repo).',
+            'status.in' => 'Status tidak valid.',
+            'visibilitas.in' => 'Visibilitas tidak valid.',
+            'boleh_komentar.boolean' => 'Nilai komentar tidak valid.',
         ]);
 
         DB::transaction(function () use ($request, $proyek) {
@@ -266,28 +316,7 @@ class ProyekController extends Controller
                 $proyek->thumbnail = $thumbnailPath;
             }
 
-            // 2. Handle Galeri (existing + new, max 5 total)
-            // Start with existing gallery from request (those not deleted by user)
-            $galeriPaths = is_array($request->existing_galeri) ? $request->existing_galeri : [];
-            
-            // Delete old gallery images that user removed
-            if ($proyek->galeri_gambar) {
-                $removedImages = array_diff($proyek->galeri_gambar, $galeriPaths);
-                foreach ($removedImages as $oldImage) {
-                    Storage::disk('public')->delete($oldImage);
-                }
-            }
-            
-            // Add new uploaded images (limit total to 2)
-            if ($request->hasFile('galeri')) {
-                $remainingSlots = 2 - count($galeriPaths);
-                $newFiles = array_slice($request->file('galeri'), 0, $remainingSlots);
-                
-                foreach ($newFiles as $img) {
-                    $path = $img->store('proyek/galeri', 'public');
-                    $galeriPaths[] = $path;
-                }
-            }
+
 
             // 3. Update Data
             $proyek->update([
@@ -295,7 +324,7 @@ class ProyekController extends Controller
                 'judul' => $request->judul,
                 'deskripsi' => $request->deskripsi,
                 'konten_html' => $request->konten_html,
-                'galeri_gambar' => $galeriPaths, // Update gallery
+
                 'url_demo' => $request->url_demo,
                 'url_repository' => $request->url_repository,
                 'status' => $request->status,
@@ -395,11 +424,7 @@ class ProyekController extends Controller
         if ($proyek->thumbnail) {
             Storage::disk('public')->delete($proyek->thumbnail);
         }
-        if ($proyek->galeri_gambar) {
-            foreach ($proyek->galeri_gambar as $img) {
-                Storage::disk('public')->delete($img);
-            }
-        }
+
 
         $proyek->delete();
 

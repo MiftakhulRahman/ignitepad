@@ -25,9 +25,8 @@ const emit = defineEmits(['update:modelValue']);
 const editor = useEditor({
     extensions: [
         StarterKit.configure({
-            // Disable bawaan StarterKit jika kita mau config custom
-            // Tapi biasanya StarterKit TIDAK bawa Link extension secara default di versi baru
-            // Warning muncul mungkin karena auto-import
+            // Disable link extension in StarterKit to avoid duplicate with custom Link extension
+            link: false,
         }),
         Link.configure({
             openOnClick: false,

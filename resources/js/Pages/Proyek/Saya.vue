@@ -4,10 +4,13 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { Plus } from 'lucide-vue-next';
 import Pagination from '@/Components/Pagination.vue';
 import Toast from '@/Components/Toast.vue';
+import Breadcrumb from '@/Components/Breadcrumb.vue';
 import ProyekCardDashboard from '@/Components/Proyek/ProyekCardDashboard.vue';
 
 const props = defineProps({
     proyeks: Object,
+    isAdminMode: Boolean,
+    filters: Object,
 });
 
 const handleDelete = (proyek) => {
@@ -24,19 +27,29 @@ const handleDelete = (proyek) => {
 
 <template>
 
-    <Head title="Proyek Saya" />
+    <Head :title="isAdminMode ? 'Kelola Proyek' : 'Proyek Saya'" />
     <Toast />
 
     <AuthenticatedLayout>
         <div class="space-y-6">
 
+            <Breadcrumb :items="[
+                { label: isAdminMode ? 'Kelola Proyek' : 'Proyek Saya' }
+            ]" />
+
             <!-- Header -->
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h2 class="text-3xl font-bold text-slate-900">Proyek Saya</h2>
-                    <p class="text-slate-600 mt-2">Kelola portofolio proyek yang telah Anda buat</p>
+                    <h2 class="text-3xl font-bold text-slate-900">
+                        <template v-if="isAdminMode">Kelola Proyek</template>
+                        <template v-else>Proyek Saya</template>
+                    </h2>
+                    <p class="text-slate-600 mt-2">
+                        <template v-if="isAdminMode">Kelola semua proyek mahasiswa dan dosen</template>
+                        <template v-else>Kelola portofolio proyek yang telah Anda buat</template>
+                    </p>
                 </div>
-                <Link :href="route('proyek.create')"
+                <Link v-if="!isAdminMode" :href="route('proyek.create')"
                     class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg shadow-indigo-600/30 hover:shadow-xl hover:shadow-indigo-600/40 transition-all">
                 <Plus :size="20" />
                 Upload Proyek Baru

@@ -1,6 +1,11 @@
 <script setup>
 import { ref, watch, computed } from 'vue';
-import { Upload, X, AlertCircle } from 'lucide-vue-next';
+import { Upload, X, AlertCircle, Crop } from 'lucide-vue-next';
+import { Cropper } from 'vue-advanced-cropper';
+import 'vue-advanced-cropper/dist/style.css';
+import Modal from '@/Components/Modal.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
+import PrimaryButton from '@/Components/PrimaryButton.vue';
 
 const props = defineProps({
     modelValue: [File, Array, null],
@@ -33,6 +38,12 @@ const previews = ref([]);
 const dragActive = ref(false);
 const errors = ref([]);
 
+// Cropper State
+const showCropper = ref(false);
+const cropperImage = ref(null);
+const currentFile = ref(null);
+const cropperRef = ref(null);
+
 const remainingSlots = computed(() => {
     if (!props.multiple) return 0;
     const fileArray = files.value || [];
@@ -57,118 +68,11 @@ const generatePreviews = () => {
     });
 };
 
-// Process Image (Auto-crop & Resize)
-const processFile = async (file) => {
-    // Validate Type
-    if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
-        errors.value.push(`File ${file.name} bukan gambar JPG/PNG.`);
-        return null;
-    }
-
-    return new Promise((resolve) => {
-        const img = new Image();
-        img.src = URL.createObjectURL(file);
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-
-            let width = img.width;
-            let height = img.height;
-
-            // Auto-crop if aspect ratio is set
-            if (props.aspectRatio) {
-                const targetRatio = props.aspectRatio;
-                const currentRatio = width / height;
-
-                let sx = 0, sy = 0, sWidth = width, sHeight = height;
-
-                if (currentRatio > targetRatio) {
-                    // Image is too wide, crop width
-                    sWidth = height * targetRatio;
-                    sx = (width - sWidth) / 2;
-                } else {
-                    // Image is too tall, crop height
-                    sHeight = width / targetRatio;
-                    sy = (height - sHeight) / 2;
-                }
-
-                canvas.width = sWidth;
-                canvas.height = sHeight;
-                ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
-            } else {
-                canvas.width = width;
-                canvas.height = height;
-                ctx.drawImage(img, 0, 0);
-            }
-
-            // Compress if > 1MB (approx logic)
-            // Start with 0.9 quality, reduce if needed? 
-            // For now, just export as JPEG 0.8 which usually reduces size significantly
-            canvas.toBlob((blob) => {
-                if (blob.size > 1024 * 1024) {
-                    // If still > 1MB, try aggressive compression
-                    canvas.toBlob((blob2) => {
-                        const newFile = new File([blob2], file.name, { type: 'image/jpeg' });
-                        resolve(newFile);
-                    }, 'image/jpeg', 0.6);
-                } else {
-                    const newFile = new File([blob], file.name, { type: file.type });
-                    resolve(newFile);
-                }
-            }, file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.85);
-        };
-        img.onerror = () => {
-            errors.value.push(`Gagal memproses gambar ${file.name}.`);
-            resolve(null);
-        };
-    });
-};
-
-const handleFiles = async (newFiles) => {
-    errors.value = []; // Reset errors
-    const processedFiles = [];
-
-    for (const file of newFiles) {
-        if (file.size > 5 * 1024 * 1024) { // Hard limit 5MB before processing
-            errors.value.push(`File ${file.name} terlalu besar (>5MB).`);
-            continue;
-        }
-
-        const processed = await processFile(file);
-        if (processed) {
-            // Final check 1MB
-            if (processed.size > 1024 * 1024) {
-                errors.value.push(`File ${file.name} gagal dikompresi di bawah 1MB.`);
-            } else {
-                processedFiles.push(processed);
-            }
-        }
-    }
-
-    if (props.multiple) {
-        const currentCount = files.value?.length || 0;
-        const availableSlots = props.maxFiles - currentCount;
-        const filesToAdd = processedFiles.slice(0, availableSlots);
-
-        if (processedFiles.length > availableSlots) {
-            errors.value.push(`Hanya ${availableSlots} file yang ditambahkan (Max ${props.maxFiles}).`);
-        }
-
-        files.value = [...(files.value || []), ...filesToAdd];
-        emit('update:modelValue', files.value);
-    } else {
-        if (processedFiles.length > 0) {
-            files.value = processedFiles[0];
-            emit('update:modelValue', files.value);
-        }
-    }
-
-    generatePreviews();
-};
-
 const handleFileSelect = (event) => {
     const selectedFiles = Array.from(event.target.files);
     handleFiles(selectedFiles);
+    // Reset input to allow selecting same file again
+    event.target.value = '';
 };
 
 const handleDrop = (event) => {
@@ -177,7 +81,86 @@ const handleDrop = (event) => {
     handleFiles(droppedFiles);
 };
 
-const removeFile = (index) => {
+const handleFiles = async (newFiles) => {
+    errors.value = []; // Reset errors
+
+    for (const file of newFiles) {
+        // Strict 1MB check for initial file
+        if (file.size > 1024 * 1024) {
+            errors.value.push(`File ${file.name} melebihi 1MB.`);
+            continue;
+        }
+
+        // Validate Type
+        if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
+            errors.value.push(`File ${file.name} bukan gambar JPG/PNG.`);
+            continue;
+        }
+
+        // If cropping is enabled (aspectRatio set) and single file mode (usually for thumbnail)
+        // Open cropper modal
+        if (props.aspectRatio && !props.multiple) {
+            currentFile.value = file;
+            cropperImage.value = URL.createObjectURL(file);
+            showCropper.value = true;
+            return; // Stop processing other files if any (should be single)
+        }
+
+        // If no cropping needed or multiple files, just add them
+        addFile(file);
+    }
+};
+
+const addFile = (file) => {
+    if (props.multiple) {
+        const currentCount = files.value?.length || 0;
+        if (currentCount >= props.maxFiles) {
+            errors.value.push(`Maksimal ${props.maxFiles} file.`);
+            return;
+        }
+        files.value = [...(files.value || []), file];
+        emit('update:modelValue', files.value);
+    } else {
+        files.value = file;
+        emit('update:modelValue', files.value);
+    }
+    generatePreviews();
+};
+
+const cropImage = () => {
+    const { canvas } = cropperRef.value.getResult();
+    if (canvas) {
+        canvas.toBlob((blob) => {
+            if (blob.size > 1024 * 1024) {
+                // If cropped result is still > 1MB, try to compress
+                canvas.toBlob((blob2) => {
+                    if (blob2.size > 1024 * 1024) {
+                        errors.value.push('Hasil crop masih melebihi 1MB. Silakan gunakan gambar yang lebih kecil.');
+                        showCropper.value = false;
+                    } else {
+                        const newFile = new File([blob2], currentFile.value.name, { type: 'image/jpeg' });
+                        addFile(newFile);
+                        showCropper.value = false;
+                    }
+                }, 'image/jpeg', 0.8);
+            } else {
+                const newFile = new File([blob], currentFile.value.name, { type: currentFile.value.type });
+                addFile(newFile);
+                showCropper.value = false;
+            }
+        }, currentFile.value.type);
+    }
+};
+
+const cancelCrop = () => {
+    showCropper.value = false;
+    cropperImage.value = null;
+    currentFile.value = null;
+};
+
+const fileInputRef = ref(null);
+
+const removeFile = (index = 0) => {
     if (props.multiple) {
         files.value.splice(index, 1);
         previews.value.splice(index, 1);
@@ -187,6 +170,10 @@ const removeFile = (index) => {
         previews.value = [];
         emit('update:modelValue', null);
     }
+};
+
+const triggerFileInput = () => {
+    fileInputRef.value?.click();
 };
 
 watch(() => props.modelValue, (newVal) => {
@@ -208,36 +195,55 @@ watch(() => props.modelValue, (newVal) => {
 <template>
     <div class="space-y-3">
 
-        <!-- Upload Area -->
-        <div v-if="!multiple || remainingSlots > 0" @drop.prevent="handleDrop" @dragover.prevent="dragActive = true"
-            @dragleave="dragActive = false" :class="[
-                'relative border-2 border-dashed rounded-xl transition-all cursor-pointer overflow-hidden',
-                dragActive ? 'border-indigo-500 bg-indigo-50' : 'border-slate-300 hover:border-indigo-400 bg-slate-50',
-                multiple ? 'p-4' : 'aspect-video'
-            ]">
-            <input type="file" :accept="'image/jpeg,image/jpg,image/png'" :multiple="multiple"
-                @change="handleFileSelect" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+        <!-- Hidden File Input -->
+        <input ref="fileInputRef" type="file" :accept="'image/jpeg,image/jpg,image/png'" :multiple="multiple"
+            @change="handleFileSelect" class="hidden">
 
-            <!-- Empty State -->
+        <!-- Upload Area -->
+        <div @drop.prevent="handleDrop" @dragover.prevent="dragActive = true" @dragleave="dragActive = false"
+            @click="(!multiple && previews.length === 0 && !preview) ? triggerFileInput() : null" :class="[
+                'relative border-2 rounded-xl transition-all overflow-hidden',
+                dragActive ? 'border-indigo-500 bg-indigo-50' : 'border-slate-300 bg-slate-50',
+                multiple ? 'p-4 border-dashed' : 'aspect-video',
+                (!multiple && (previews.length > 0 || preview)) ? 'border-solid hover:border-indigo-400 cursor-default' : 'border-dashed hover:border-indigo-400 cursor-pointer'
+            ]">
+            <!-- Empty State (No preview/file) -->
             <div v-if="previews.length === 0 && !preview"
-                class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
-                <Upload :size="32" class="text-slate-400 mb-2" />
-                <p class="text-sm font-medium text-slate-700">
+                class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center pointer-events-none">
+                <div class="w-14 h-14 bg-white rounded-full shadow-sm flex items-center justify-center mb-3">
+                    <Upload :size="28" class="text-indigo-600" />
+                </div>
+                <p class="text-sm font-semibold text-slate-800">
                     {{ multiple ? 'Upload Gambar' : 'Upload Thumbnail' }}
                 </p>
                 <p class="text-xs text-slate-500 mt-1">
-                    JPG, PNG (Max 1MB{{ aspectRatio ? ', Auto-crop 16:9' : '' }})
+                    JPG, PNG (Max 1MB{{ aspectRatio ? ', 16:9' : '' }})
                 </p>
                 <p v-if="multiple" class="text-xs text-indigo-600 font-medium mt-2">Max {{ maxFiles }} gambar</p>
             </div>
 
-            <!-- Existing Preview (dari props) -->
-            <div v-else-if="preview && previews.length === 0" class="relative w-full h-full">
-                <img :src="preview" class="w-full h-full object-cover rounded-lg">
+            <!-- Single File Preview (Inside Upload Box) -->
+            <div v-else-if="!multiple && (previews.length > 0 || preview)" class="relative w-full h-full group">
+                <img :src="previews[0] || preview" class="w-full h-full object-cover" />
+
+                <!-- Hover Overlay with Actions -->
                 <div
-                    class="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
-                    <p class="text-white text-sm font-medium">Klik untuk ganti</p>
+                    class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center gap-3">
+                    <button type="button" @click.stop="triggerFileInput"
+                        class="flex items-center gap-2 px-4 py-2.5 bg-white text-slate-900 rounded-lg text-sm font-semibold hover:bg-slate-100 hover:scale-105 transition-all shadow-lg">
+                        <Upload :size="16" /> Ganti
+                    </button>
+                    <button type="button" @click.stop="removeFile(0)"
+                        class="flex items-center gap-2 px-4 py-2.5 bg-red-500 text-white rounded-lg text-sm font-semibold hover:bg-red-600 hover:scale-105 transition-all shadow-lg">
+                        <X :size="16" /> Hapus
+                    </button>
                 </div>
+            </div>
+
+            <!-- Multiple Mode: Click to Add -->
+            <div v-else-if="multiple && remainingSlots > 0" @click="triggerFileInput"
+                class="text-center py-4 cursor-pointer">
+                <p class="text-sm text-slate-600">Klik atau drag file di sini</p>
             </div>
         </div>
 
@@ -250,23 +256,22 @@ watch(() => props.modelValue, (newVal) => {
             </div>
         </div>
 
-        <!-- Preview Grid -->
-        <div v-if="previews.length > 0" :class="multiple ? 'grid grid-cols-3 gap-3' : ''">
+        <!-- Preview Grid (Only for Multiple Mode) -->
+        <div v-if="multiple && previews.length > 0" class="grid grid-cols-3 gap-3">
             <div v-for="(previewUrl, index) in previews" :key="index" class="relative group">
-                <!-- Aspect ratio container -->
                 <div class="relative w-full aspect-video overflow-hidden rounded-xl border-2 border-slate-200">
                     <img :src="previewUrl" class="absolute inset-0 w-full h-full object-cover">
 
                     <!-- Remove Button -->
                     <button type="button" @click.stop="removeFile(index)"
-                        class="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        class="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-20">
                         <X :size="16" />
                     </button>
 
                     <!-- Size indicator -->
-                    <div v-if="files && (multiple ? files[index] : files)"
+                    <div v-if="files && files[index]"
                         class="absolute bottom-2 left-2 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded">
-                        {{ ((multiple ? files[index].size : files.size) / 1024).toFixed(0) }} KB
+                        {{ (files[index].size / 1024).toFixed(0) }} KB
                     </div>
                 </div>
             </div>
@@ -279,6 +284,21 @@ watch(() => props.modelValue, (newVal) => {
             <span v-if="remainingSlots > 0" class="text-indigo-600">{{ remainingSlots }} slot tersisa</span>
             <span v-else class="text-amber-600">Maksimal tercapai</span>
         </div>
+
+        <!-- Cropper Modal -->
+        <Modal :show="showCropper" @close="cancelCrop">
+            <div class="p-6">
+                <h2 class="text-lg font-medium text-slate-900 mb-4">Sesuaikan Gambar</h2>
+                <div class="relative w-full h-96 bg-slate-100 rounded-lg overflow-hidden mb-6">
+                    <Cropper ref="cropperRef" class="h-full" :src="cropperImage"
+                        :stencil-props="{ aspectRatio: aspectRatio || 16 / 9 }" />
+                </div>
+                <div class="flex justify-end gap-3">
+                    <SecondaryButton @click="cancelCrop">Batal</SecondaryButton>
+                    <PrimaryButton @click="cropImage">Simpan</PrimaryButton>
+                </div>
+            </div>
+        </Modal>
 
     </div>
 </template>

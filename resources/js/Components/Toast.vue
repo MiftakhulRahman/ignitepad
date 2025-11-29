@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch } from 'vue';
 import { usePage } from '@inertiajs/vue3';
-import { CheckCircle, AlertCircle, X } from 'lucide-vue-next';
+import { CheckCircle2, AlertCircle, X } from 'lucide-vue-next'; // Gunakan CheckCircle2 untuk varian yang lebih clean
 
 const page = usePage();
 const show = ref(false);
@@ -21,36 +21,57 @@ const fire = (msg, msgType = 'success') => {
     message.value = msg;
     type.value = msgType;
     show.value = true;
-    setTimeout(() => { show.value = false; }, 5000); // 5 detik agar tidak terlalu cepat hilang
+    
+    // Reset timer setiap kali fire dipanggil agar tidak hilang tiba-tiba jika di-spam
+    if (window.toastTimeout) clearTimeout(window.toastTimeout);
+    window.toastTimeout = setTimeout(() => { show.value = false; }, 5000);
 };
 
 defineExpose({ fire });
 </script>
 
 <template>
-    <Transition enter-active-class="transform ease-out duration-300 transition"
+    <Transition 
+        enter-active-class="transform ease-out duration-300 transition"
         enter-from-class="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2"
-        enter-to-class="translate-y-0 opacity-100 sm:translate-x-0" leave-active-class="transition ease-in duration-100"
-        leave-from-class="opacity-100" leave-to-class="opacity-0">
+        enter-to-class="translate-y-0 opacity-100 sm:translate-x-0" 
+        leave-active-class="transition ease-in duration-200"
+        leave-from-class="opacity-100" 
+        leave-to-class="opacity-0 translate-x-2">
+        
         <div v-if="show"
-            class="fixed top-24 right-6 z-50 flex w-full max-w-md overflow-hidden bg-white rounded-xl shadow-2xl border border-gray-100">
-            <div class="flex items-center justify-center w-16"
-                :class="type === 'success' ? 'bg-green-500' : 'bg-red-500'">
-                <CheckCircle v-if="type === 'success'" class="w-8 h-8 text-white" />
-                <AlertCircle v-else class="w-8 h-8 text-white" />
-            </div>
+             class="fixed top-6 right-6 z-50 w-full max-w-sm bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden pointer-events-auto ring-1 ring-black/5">
+            
+            <div class="p-4 flex items-start">
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center ring-1 ring-inset"
+                         :class="type === 'success' 
+                            ? 'bg-green-50 text-green-600 ring-green-500/10' 
+                            : 'bg-red-50 text-red-600 ring-red-500/10'">
+                        
+                        <CheckCircle2 v-if="type === 'success'" class="w-5 h-5" />
+                        <AlertCircle v-else class="w-5 h-5" />
+                    </div>
+                </div>
 
-            <div class="px-6 py-4 flex-1">
-                <span class="font-bold text-lg block mb-1"
-                    :class="type === 'success' ? 'text-green-600' : 'text-red-600'">
-                    {{ type === 'success' ? 'Berhasil!' : 'Terjadi Kesalahan!' }}
-                </span>
-                <p class="text-sm text-gray-600 leading-relaxed">{{ message }}</p>
-            </div>
+                <div class="ml-3 w-0 flex-1 pt-0.5">
+                    <p class="text-sm font-medium text-slate-900">
+                        {{ type === 'success' ? 'Berhasil' : 'Gagal' }}
+                    </p>
+                    <p class="mt-1 text-sm text-slate-500 leading-relaxed">
+                        {{ message }}
+                    </p>
+                </div>
 
-            <button @click="show = false" class="pr-4 pl-2 text-gray-400 hover:text-gray-600 transition-colors">
-                <X :size="20" />
-            </button>
-        </div>
+                <div class="ml-4 flex flex-shrink-0">
+                    <button @click="show = false" 
+                            class="inline-flex rounded-md bg-white text-slate-400 hover:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors">
+                        <span class="sr-only">Close</span>
+                        <X class="w-5 h-5" aria-hidden="true" />
+                    </button>
+                </div>
+            </div>
+            
+            </div>
     </Transition>
 </template>

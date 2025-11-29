@@ -3,18 +3,22 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, Link } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import {
-    Layout, Image, Cpu, Settings, CheckCircle2,
-    ChevronRight, ChevronLeft, Save, AlertCircle, ArrowLeft
+    Layout, Image as ImageIcon, Cpu, Settings,
+    ChevronRight, ChevronLeft, Save, Globe, Smartphone, HardDrive, Gamepad2, PenTool, ArrowLeft,
+    CheckCircle2
 } from 'lucide-vue-next';
 
-// Custom Components
+// Components
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
 import InputError from '@/Components/InputError.vue';
 import RichTextEditor from '@/Components/RichTextEditor.vue';
-import ImageUpload from '@/Components/ImageUpload.vue';
 import CollaboratorInput from '@/Components/Proyek/CollaboratorInput.vue';
 import Toast from '@/Components/Toast.vue';
+import Breadcrumb from '@/Components/Breadcrumb.vue';
+import ImageUpload from '@/Components/ImageUpload.vue';
+// IMPORT COMPONENT STEPPER MANUAL
+import VerticalStepper from '@/Components/VerticalStepper.vue';
 
 const props = defineProps({
     proyek: Object,
@@ -24,26 +28,29 @@ const props = defineProps({
     kolaborators: Array,
 });
 
-// --- STEPS CONFIG ---
+const iconMap = {
+    'Globe': Globe, 'Smartphone': Smartphone, 'Cpu': Cpu,
+    'HardDrive': HardDrive, 'Gamepad2': Gamepad2, 'PenTool': PenTool,
+};
+const getIcon = (name) => iconMap[name] || Layout;
+
+// Data Steps (Sama seperti Buat.vue)
 const steps = [
-    { id: 1, title: 'Informasi Dasar', icon: Layout, desc: 'Judul & Deskripsi' },
-    { id: 2, title: 'Konten Visual', icon: Image, desc: 'Gambar & Detail' },
-    { id: 3, title: 'Teknologi & Link', icon: Cpu, desc: 'Stack & Repositori' },
-    { id: 4, title: 'Pengaturan', icon: Settings, desc: 'Publikasi' },
+    { step: 1, title: 'Informasi', description: 'Dasar' },
+    { step: 2, title: 'Visual', description: 'Konten' },
+    { step: 3, title: 'Teknologi', description: 'Stack' },
+    { step: 4, title: 'Finalisasi', description: 'Akses' },
 ];
 
 const currentStep = ref(1);
 
-// --- FORM ---
 const form = useForm({
     _method: 'POST',
     judul: props.proyek.judul,
     kategori_id: props.proyek.kategori_id,
     deskripsi: props.proyek.deskripsi,
     konten_html: props.proyek.konten_html,
-    thumbnail: null, // Kosongkan, backend handle jika null = gak ganti
-    galeri: [],
-    existing_galeri: props.proyek.galeri_gambar || [], // Track existing
+    thumbnail: null,
     teknologi_ids: props.currentTeknologiIds,
     url_demo: props.proyek.url_demo,
     url_repository: props.proyek.url_repository,
@@ -63,7 +70,54 @@ const form = useForm({
     })) : [],
 });
 
-// --- NAVIGATION LOGIC ---
+const existingThumbnailUrl = ref(props.proyek.thumbnail ? `/storage/${props.proyek.thumbnail}` : null);
+
+const selectTeknologi = (id) => {
+    if (form.teknologi_ids.includes(id)) form.teknologi_ids = form.teknologi_ids.filter(t => t !== id);
+    else form.teknologi_ids.push(id);
+};
+
+const validateStep = (step) => {
+    form.clearErrors();
+    let valid = true;
+    if (step === 1) {
+        if (!form.judul) { form.setError('judul', 'Judul wajib diisi'); valid = false; }
+        if (!form.deskripsi) { form.setError('deskripsi', 'Deskripsi wajib diisi'); valid = false; }
+    }
+    if (step === 2) {
+        if (!form.konten_html || form.konten_html === '<p></p>') { form.setError('konten_html', 'Konten wajib diisi'); valid = false; }
+    }
+    if (step === 3) {
+        if (form.teknologi_ids.length === 0) {
+            form.setError('teknologi_ids', 'Pilih minimal satu teknologi');
+            valid = false;
+        }
+
+        // Validasi URL Repository (jika diisi)
+        if (form.url_repository && !isValidUrl(form.url_repository)) {
+            form.setError('url_repository', 'Link repository harus berupa URL yang valid (contoh: https://github.com/username/repo)');
+            valid = false;
+        }
+
+        // Validasi URL Demo (jika diisi)
+        if (form.url_demo && !isValidUrl(form.url_demo)) {
+            form.setError('url_demo', 'Link demo harus berupa URL yang valid (contoh: https://example.com)');
+            valid = false;
+        }
+    }
+    return valid;
+};
+
+// Helper function untuk validasi URL
+const isValidUrl = (string) => {
+    try {
+        const url = new URL(string);
+        return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch (_) {
+        return false;
+    }
+};
+
 const nextStep = () => {
     if (validateStep(currentStep.value)) {
         currentStep.value++;
@@ -76,49 +130,55 @@ const prevStep = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
-// Simple Frontend Validation per Step
-const validateStep = (step) => {
-    form.clearErrors();
-    let valid = true;
-
-    if (step === 1) {
-        if (!form.judul) { form.setError('judul', 'Judul wajib diisi'); valid = false; }
-        if (!form.kategori_id) { form.setError('kategori_id', 'Pilih kategori proyek'); valid = false; }
-        if (!form.deskripsi) { form.setError('deskripsi', 'Deskripsi singkat wajib diisi'); valid = false; }
+// Logic Navigasi via Stepper
+const goToStep = (step) => {
+    // Logic: Boleh mundur kapan saja. Boleh maju hanya jika step saat ini valid.
+    if (step < currentStep.value) {
+        currentStep.value = step;
     }
-    if (step === 2) {
-        // Thumbnail tidak wajib saat edit (sudah ada yang lama)
-        if (!form.konten_html || form.konten_html === '<p></p>') {
-            form.setError('konten_html', 'Konten detail proyek wajib diisi'); valid = false;
+    else if (step > currentStep.value) {
+        // Cek validasi step saat ini sebelum loncat
+        if (validateStep(currentStep.value)) {
+            // Opsional: Batasi agar tidak bisa loncat lebih dari 1 step jika belum pernah diisi
+            // Tapi untuk Edit biasanya user bebas loncat-loncat asalkan data valid
+            currentStep.value = step;
         }
     }
-    if (step === 3) {
-        if (form.teknologi_ids.length === 0) {
-            form.setError('teknologi_ids', 'Pilih minimal satu teknologi'); valid = false;
-        }
-    }
-
-    return valid;
 };
 
 const submit = () => {
+    // Validate all steps before submit
+    const step1Valid = validateStep(1);
+    const step2Valid = validateStep(2);
+    const step3Valid = validateStep(3);
+
+    if (!step1Valid || !step2Valid || !step3Valid) {
+        // Navigate to first invalid step
+        if (!step1Valid) {
+            currentStep.value = 1;
+        } else if (!step2Valid) {
+            currentStep.value = 2;
+        } else if (!step3Valid) {
+            currentStep.value = 3;
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+    }
+
     form.post(route('proyek.update', props.proyek.id), {
         preserveScroll: true,
+        onError: (errors) => {
+            // Navigate to step with error
+            if (errors.judul || errors.kategori_id || errors.deskripsi) {
+                currentStep.value = 1;
+            } else if (errors.thumbnail || errors.konten_html) {
+                currentStep.value = 2;
+            } else if (errors.teknologi_ids || errors.url_demo || errors.url_repository) {
+                currentStep.value = 3;
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
     });
-};
-
-// --- HELPERS ---
-const selectTeknologi = (id) => {
-    if (form.teknologi_ids.includes(id)) {
-        form.teknologi_ids = form.teknologi_ids.filter(t => t !== id);
-    } else {
-        form.teknologi_ids.push(id);
-    }
-};
-
-// Remove existing gallery image
-const removeExistingGalleryImage = (index) => {
-    form.existing_galeri.splice(index, 1);
 };
 </script>
 
@@ -128,294 +188,191 @@ const removeExistingGalleryImage = (index) => {
     <Toast />
 
     <AuthenticatedLayout>
-        <div class="max-w-5xl mx-auto space-y-8 pb-20">
+        <div class="min-h-screen bg-[#FDFDFD] pb-24 pt-8 font-sans">
+            <div class="max-w-6xl mx-auto px-4 sm:px-6">
 
-            <div class="space-y-6">
-                <div>
+                <Breadcrumb :items="[
+                    { label: 'Proyek Saya', url: route('proyek.saya') },
+                    { label: proyek.judul, url: route('proyek.dashboard.show', proyek.slug) },
+                    { label: 'Edit' }
+                ]" />
+
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                     <Link :href="route('proyek.dashboard.show', proyek.slug)"
-                        class="inline-flex items-center text-sm text-slate-600 hover:text-indigo-600 mb-4">
+                        class="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-900 bg-white px-4 py-2 rounded-full border border-slate-200 shadow-sm transition-all hover:shadow-md">
                     <ArrowLeft :size="16" class="mr-2" />
                     Kembali ke Preview
                     </Link>
-                    <h1 class="text-2xl font-bold text-gray-900">Edit Proyek</h1>
-                    <p class="text-gray-500">{{ proyek.judul }}</p>
                 </div>
 
-                <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-                    <div class="flex items-center justify-between relative">
-                        <div class="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-gray-100 -z-0 rounded-full">
-                        </div>
-                        <div class="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-indigo-500 -z-0 rounded-full transition-all duration-500"
-                            :style="{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }"></div>
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-                        <div v-for="step in steps" :key="step.id"
-                            class="relative z-10 flex flex-col items-center group cursor-pointer"
-                            @click="step.id < currentStep ? currentStep = step.id : null">
-                            <div class="w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300"
-                                :class="currentStep >= step.id
-                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200'
-                                    : 'bg-white border-gray-300 text-gray-400'">
-                                <component :is="step.icon" :size="20" />
-                            </div>
-                            <div class="mt-2 text-center hidden sm:block">
-                                <p class="text-xs font-bold transition-colors"
-                                    :class="currentStep >= step.id ? 'text-indigo-600' : 'text-gray-500'">{{ step.title
-                                    }}</p>
-                                <p class="text-[10px] text-gray-400">{{ step.desc }}</p>
-                            </div>
+                    <div class="lg:col-span-3 sticky top-8">
+                        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 overflow-hidden">
+                            <VerticalStepper :steps="steps" :current-step="currentStep" @go-to-step="goToStep" />
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <div class="bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden">
-                <form @submit.prevent="submit">
+                    <div class="lg:col-span-9">
+                        <div
+                            class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden relative flex flex-col min-h-[600px]">
+                            <form @submit.prevent="submit" class="flex-1 flex flex-col">
+                                <div class="p-8 md:p-12 flex-1">
 
-                    <div class="p-6 sm:p-8 min-h-[400px]">
-
-                        <!-- STEP 1: Informasi Dasar -->
-                        <div v-show="currentStep === 1" class="space-y-6 animate-fade-in">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div class="md:col-span-2 space-y-4">
-                                    <div>
-                                        <InputLabel for="judul" value="Judul Proyek" />
-                                        <TextInput id="judul" v-model="form.judul" type="text"
-                                            class="mt-1 block w-full text-lg"
-                                            placeholder="Contoh: Sistem Presensi Wajah AI" autofocus />
-                                        <InputError :message="form.errors.judul" class="mt-2" />
+                                    <div class="mb-8 border-b border-slate-50 pb-4">
+                                        <h2 class="text-2xl font-semibold text-slate-800">{{ steps[currentStep -
+                                            1].title
+                                        }}</h2>
+                                        <p class="text-slate-500">Edit informasi proyek.</p>
                                     </div>
-                                    <div>
-                                        <InputLabel for="deskripsi" value="Deskripsi Singkat (Teaser)" />
-                                        <textarea id="deskripsi" v-model="form.deskripsi" rows="3"
-                                            class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                            placeholder="Jelaskan inti proyekmu dalam 1-2 kalimat untuk menarik perhatian..."></textarea>
-                                        <p class="text-xs text-gray-500 mt-1 text-right">{{ form.deskripsi.length }}/255
-                                            karakter</p>
-                                        <InputError :message="form.errors.deskripsi" class="mt-2" />
-                                    </div>
-                                </div>
 
-                                <div>
-                                    <InputLabel value="Kategori Proyek" class="mb-2" />
-                                    <div class="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
-                                        <div v-for="kat in kategoris" :key="kat.id" @click="form.kategori_id = kat.id"
-                                            class="flex items-center p-3 rounded-lg bordercursor-pointer transition-all border hover:shadow-sm cursor-pointer"
-                                            :class="form.kategori_id === kat.id ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-indigo-300'">
-                                            <div class="w-3 h-3 rounded-full mr-3 flex-shrink-0"
-                                                :style="{ backgroundColor: kat.warna }"></div>
-                                            <span class="text-sm font-medium text-gray-700">{{ kat.nama }}</span>
-                                            <CheckCircle2 v-if="form.kategori_id === kat.id" :size="16"
-                                                class="ml-auto text-indigo-600" />
+                                    <div v-show="currentStep === 1" class="animate-enter space-y-6">
+                                        <div class="space-y-4">
+                                            <div>
+                                                <InputLabel value="Judul Proyek" />
+                                                <TextInput v-model="form.judul"
+                                                    class="mt-2 block w-full text-lg rounded-2xl" />
+                                                <InputError :message="form.errors.judul" />
+                                            </div>
+                                            <div>
+                                                <InputLabel value="Deskripsi Singkat" />
+                                                <textarea v-model="form.deskripsi" rows="3"
+                                                    class="mt-2 block w-full rounded-2xl border-slate-200 bg-slate-50 focus:bg-white resize-none"></textarea>
+                                                <InputError :message="form.errors.deskripsi" />
+                                            </div>
+                                            <div>
+                                                <InputLabel value="Kategori" class="mb-2" />
+                                                <div class="flex flex-wrap gap-3">
+                                                    <div v-for="kat in kategoris" :key="kat.id"
+                                                        @click="form.kategori_id = kat.id"
+                                                        class="flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all"
+                                                        :class="form.kategori_id === kat.id ? 'border-indigo-600 bg-indigo-50 ring-1 ring-indigo-600' : 'border-slate-200 bg-white hover:bg-slate-50'">
+                                                        <component :is="getIcon(kat.ikon)" class="w-4 h-4"
+                                                            :class="form.kategori_id === kat.id ? 'text-indigo-600' : 'text-slate-500'" />
+                                                        <span class="text-sm font-medium"
+                                                            :class="form.kategori_id === kat.id ? 'text-indigo-900' : 'text-slate-700'">{{
+                                                                kat.nama }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                    <InputError :message="form.errors.kategori_id" class="mt-2" />
-                                </div>
-                            </div>
-                        </div>
 
-                        <!-- STEP 2: Konten Visual -->
-                        <div v-show="currentStep === 2" class="space-y-8 animate-fade-in">
-                            <div>
-                                <InputLabel value="Thumbnail Utama" class="mb-2" />
-                                <div v-if="proyek.thumbnail && !form.thumbnail" class="mb-4">
-                                    <p class="text-sm text-slate-600 mb-2">Thumbnail saat ini:</p>
-                                    <img :src="'/storage/' + proyek.thumbnail"
-                                        class="w-64 h-36 object-cover rounded-lg border-2 border-slate-200">
-                                    <p class="text-xs text-slate-500 mt-2">Upload gambar baru untuk menggantinya
-                                        (Kosongkan jika tidak ingin mengganti)</p>
-                                </div>
-                                <ImageUpload v-model="form.thumbnail" :aspect-ratio="16 / 9" previewSize="h-64" />
-                                <InputError :message="form.errors.thumbnail" class="mt-2" />
-                            </div>
-
-                            <div>
-                                <InputLabel value="Cerita Proyek (Detail Lengkap)" class="mb-2" />
-                                <RichTextEditor v-model="form.konten_html"
-                                    placeholder="Ceritakan latar belakang, fitur utama, dan tantangan yang kamu hadapi..." />
-                                <InputError :message="form.errors.konten_html" class="mt-2" />
-                            </div>
-
-                            <div>
-                                <InputLabel value="Galeri Tambahan (Opsional)" class="mb-2" />
-
-                                <!-- Existing Gallery Images -->
-                                <div v-if="form.existing_galeri.length > 0" class="mb-4">
-                                    <p class="text-sm text-slate-600 mb-2">Gambar galeri saat ini:</p>
-                                    <div class="grid grid-cols-3 gap-3">
-                                        <div v-for="(img, index) in form.existing_galeri" :key="index"
-                                            class="relative group">
-                                            <img :src="'/storage/' + img"
-                                                class="w-full h-24 object-cover rounded-lg border-2 border-slate-200">
-                                            <button type="button" @click="removeExistingGalleryImage(index)"
-                                                class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <ImageUpload v-model="form.galeri" multiple :max-files="2" />
-                                <p class="text-xs text-gray-500 mt-1">Upload screenshot aplikasi atau diagram sistem
-                                    (Max 2 gambar total).</p>
-                                <InputError :message="form.errors.galeri" class="mt-2" />
-                            </div>
-                        </div>
-
-                        <!-- STEP 3: Teknologi & Link -->
-                        <div v-show="currentStep === 3" class="space-y-8 animate-fade-in">
-                            <div>
-                                <InputLabel value="Teknologi & Tools yang Digunakan" class="mb-3" />
-                                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                                    <div v-for="tech in teknologis" :key="tech.id" @click="selectTeknologi(tech.id)"
-                                        class="flex flex-col items-center justify-center p-3 rounded-xl border cursor-pointer transition-all duration-200 text-center h-24"
-                                        :class="form.teknologi_ids.includes(tech.id)
-                                            ? 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm ring-1 ring-indigo-500'
-                                            : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm text-gray-600'">
-                                        <img :src="tech.ikon_url" class="w-8 h-8 mb-2 object-contain" :alt="tech.nama">
-                                        <span class="text-xs font-medium truncate w-full px-1">{{ tech.nama }}</span>
-                                    </div>
-                                </div>
-                                <InputError :message="form.errors.teknologi_ids" class="mt-2" />
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <InputLabel for="repo" value="URL Repository (GitHub/GitLab)" />
-                                    <TextInput id="repo" v-model="form.url_repository" type="url"
-                                        class="mt-1 block w-full" placeholder="https://github.com/username/repo" />
-                                </div>
-                                <div>
-                                    <InputLabel for="demo" value="URL Demo / Live Preview" />
-                                    <TextInput id="demo" v-model="form.url_demo" type="url" class="mt-1 block w-full"
-                                        placeholder="https://myproject.com" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- STEP 4: Pengaturan & Publikasi -->
-                        <div v-show="currentStep === 4" class="space-y-8 animate-fade-in">
-                            <div class="bg-indigo-50 border border-indigo-100 rounded-lg p-4 flex gap-3 items-start">
-                                <AlertCircle class="text-indigo-600 shrink-0 mt-0.5" :size="20" />
-                                <div>
-                                    <h4 class="font-bold text-indigo-900 text-sm">Hampir Selesai!</h4>
-                                    <p class="text-indigo-700 text-sm mt-1">Pastikan semua data sudah benar sebelum
-                                        mempublikasikan proyek ini.</p>
-                                </div>
-                            </div>
-
-                            <!-- Collaborator Section -->
-                            <div class="border-b border-gray-200 pb-8">
-                                <CollaboratorInput v-model="form.kolaborators" />
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <InputLabel value="Status Publikasi" class="mb-3" />
-                                    <div class="space-y-3">
-                                        <label
-                                            class="flex items-center p-4 border rounded-lg cursor-pointer transition-all"
-                                            :class="form.status === 'terbit' ? 'border-green-500 bg-green-50 ring-1 ring-green-500' : 'border-gray-200 hover:bg-gray-50'">
-                                            <input type="radio" v-model="form.status" value="terbit"
-                                                class="text-green-600 focus:ring-green-500">
-                                            <div class="ml-3">
-                                                <span class="block text-sm font-bold text-gray-900">Terbitkan
-                                                    Sekarang</span>
-                                                <span class="block text-xs text-gray-500">Proyek akan langsung bisa
-                                                    dilihat oleh publik.</span>
-                                            </div>
-                                        </label>
-                                        <label
-                                            class="flex items-center p-4 border rounded-lg cursor-pointer transition-all"
-                                            :class="form.status === 'draft' ? 'border-amber-500 bg-amber-50 ring-1 ring-amber-500' : 'border-gray-200 hover:bg-gray-50'">
-                                            <input type="radio" v-model="form.status" value="draft"
-                                                class="text-amber-600 focus:ring-amber-500">
-                                            <div class="ml-3">
-                                                <span class="block text-sm font-bold text-gray-900">Simpan sebagai
-                                                    Draft</span>
-                                                <span class="block text-xs text-gray-500">Simpan dulu, edit dan
-                                                    terbitkan nanti.</span>
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <InputLabel value="Pengaturan Lainnya" class="mb-3" />
-                                    <div class="space-y-4">
-                                        <label class="flex items-center justify-between p-3 border rounded-lg bg-white">
-                                            <span class="text-sm font-medium text-gray-700">Izinkan Komentar</span>
-                                            <input type="checkbox" v-model="form.boleh_komentar"
-                                                class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500">
-                                        </label>
-
+                                    <div v-show="currentStep === 2" class="animate-enter space-y-8">
                                         <div>
-                                            <InputLabel value="Visibilitas" class="text-xs text-gray-500 mb-1" />
-                                            <select v-model="form.visibilitas"
-                                                class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                                                <option value="publik">Publik (Semua Orang)</option>
-                                                <option value="terbatas">Terbatas (Hanya User Login)</option>
-                                                <option value="privat">Privat (Hanya Saya)</option>
-                                            </select>
+                                            <InputLabel value="Thumbnail" class="mb-2" />
+                                            <ImageUpload v-model="form.thumbnail" :preview="existingThumbnailUrl"
+                                                :aspect-ratio="16 / 9" class="w-full rounded-2xl" />
+                                        </div>
+                                        <div>
+                                            <InputLabel value="Konten" class="mb-2" />
+                                            <RichTextEditor v-model="form.konten_html" />
+                                        </div>
+                                    </div>
+
+                                    <div v-show="currentStep === 3" class="animate-enter space-y-8">
+                                        <div>
+                                            <InputLabel value="Tech Stack" class="mb-4" />
+                                            <div class="flex flex-wrap gap-4">
+                                                <div v-for="tech in teknologis" :key="tech.id"
+                                                    @click="selectTeknologi(tech.id)"
+                                                    class="flex items-center gap-3 px-4 py-2.5 rounded-full border cursor-pointer transition-all duration-300 select-none group"
+                                                    :class="form.teknologi_ids.includes(tech.id)
+                                                        ? 'bg-indigo-50 border-indigo-600 ring-1 ring-indigo-600 scale-105'
+                                                        : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'">
+
+                                                    <img :src="tech.ikon_url"
+                                                        class="w-5 h-5 object-contain transition-all duration-300"
+                                                        :class="form.teknologi_ids.includes(tech.id) ? 'grayscale-0' : 'grayscale group-hover:grayscale-0 opacity-70 group-hover:opacity-100'">
+
+                                                    <span class="text-xs font-semibold"
+                                                        :class="form.teknologi_ids.includes(tech.id) ? 'text-indigo-900' : 'text-slate-600'">
+                                                        {{ tech.nama }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div class="w-full">
+                                                <InputLabel value="Link Repository" />
+                                                <TextInput v-model="form.url_repository" type="url"
+                                                    class="rounded-xl w-full" placeholder="https://github.com/..." />
+                                                <InputError :message="form.errors.url_repository" class="mt-2" />
+                                            </div>
+                                            <div class="w-full">
+                                                <InputLabel value="Link Demo" />
+                                                <TextInput v-model="form.url_demo" type="url" class="rounded-xl w-full"
+                                                    placeholder="https://example.com" />
+                                                <InputError :message="form.errors.url_demo" class="mt-2" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div v-show="currentStep === 4" class="animate-enter space-y-8">
+                                        <CollaboratorInput v-model="form.kolaborators" />
+                                        <div class="bg-slate-50 rounded-2xl p-6 flex flex-col sm:flex-row gap-6">
+                                            <div class="flex-1">
+                                                <InputLabel value="Status" class="mb-2" />
+                                                <select v-model="form.status"
+                                                    class="w-full rounded-xl border-slate-200">
+                                                    <option value="draft">Draft</option>
+                                                    <option value="terbit">Terbit</option>
+                                                </select>
+                                            </div>
+                                            <div class="flex-1">
+                                                <InputLabel value="Visibilitas" class="mb-2" />
+                                                <select v-model="form.visibilitas"
+                                                    class="w-full rounded-xl border-slate-200">
+                                                    <option value="publik">Publik</option>
+                                                    <option value="terbatas">Terbatas</option>
+                                                    <option value="privat">Privat</option>
+                                                </select>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+
+                                <div
+                                    class="px-8 py-6 bg-slate-50 border-t border-slate-100 flex justify-between items-center rounded-b-[2rem]">
+                                    <button type="button" v-if="currentStep > 1" @click="prevStep"
+                                        class="inline-flex items-center justify-center h-12 px-8 min-w-[140px] border border-slate-200 rounded-full bg-white text-slate-600 hover:bg-slate-100 transition-colors">
+                                        <ChevronLeft :size="20" class="mr-1" /> Kembali
+                                    </button>
+                                    <div v-else></div>
+
+                                    <button type="button" v-if="currentStep < 4" @click="nextStep"
+                                        class="inline-flex items-center justify-center h-12 px-8 min-w-[140px] bg-slate-900 text-white rounded-full font-medium text-sm hover:bg-slate-800 transition-all">
+                                        Lanjut
+                                        <ChevronRight :size="18" class="ml-1" />
+                                    </button>
+
+                                    <button type="submit" v-if="currentStep === 4" :disabled="form.processing"
+                                        class="inline-flex items-center justify-center h-12 px-8 min-w-[140px] bg-indigo-600 text-white rounded-full font-medium text-sm hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center gap-2">
+                                        <Save :size="16" /> Simpan
+                                    </button>
+                                </div>
+                            </form>
                         </div>
-
                     </div>
-
-                    <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between items-center">
-                        <button type="button" v-if="currentStep > 1" @click="prevStep"
-                            class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none">
-                            <ChevronLeft :size="16" class="mr-2" /> Kembali
-                        </button>
-                        <div v-else></div> <button type="button" v-if="currentStep < 4" @click="nextStep"
-                            class="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none">
-                            Lanjut
-                            <ChevronRight :size="16" class="ml-2" />
-                        </button>
-
-                        <button type="submit" v-if="currentStep === 4" :disabled="form.processing"
-                            class="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none disabled:opacity-50">
-                            <Save :size="16" class="mr-2" />
-                            {{ form.status === 'terbit' ? 'Terbitkan Proyek' : 'Simpan Draft' }}
-                        </button>
-                    </div>
-
-                </form>
+                </div>
             </div>
         </div>
     </AuthenticatedLayout>
 </template>
 
 <style scoped>
-.custom-scrollbar::-webkit-scrollbar {
-    width: 4px;
+.animate-enter {
+    animation: fadeIn 0.4s ease-out forwards;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1;
-    border-radius: 4px;
-}
-
-/* Animasi sederhana untuk transisi step */
 @keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(8px);
     }
 
     to {
         opacity: 1;
         transform: translateY(0);
     }
-}
-
-.animate-fade-in {
-    animation: fadeIn 0.3s ease-out forwards;
 }
 </style>

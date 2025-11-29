@@ -24,10 +24,10 @@ import {
     Send,
     Heart,
     Settings,
-    BarChart3,
-    Clock,
     MoreHorizontal,
-    CornerDownRight
+    CornerDownRight,
+    Code2,
+    Users
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -41,9 +41,6 @@ const props = defineProps({
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
-
-// Mode manajemen = pemilik atau admin
-const isManagementMode = computed(() => props.isOwner || props.isAdmin);
 
 // Hitung total komentar (Induk + Balasan)
 const totalKomentarCount = computed(() => {
@@ -128,21 +125,7 @@ const shareProyek = () => {
     }
 };
 
-// Edit proyek
-const editProyek = () => {
-    router.get(route('proyek.edit', props.proyek.slug));
-};
-
-// Hapus proyek
-const deleteProyek = () => {
-    if (
-        confirm(
-            'Apakah Anda yakin ingin menghapus proyek ini? Tindakan ini tidak bisa dibatalkan.',
-        )
-    ) {
-        router.delete(route('proyek.destroy', props.proyek.id));
-    }
-};
+// Removed editProyek and deleteProyek - use Dashboard for management
 
 // ================ KOMENTAR UTAMA ================\
 const commentForm = useForm({
@@ -344,8 +327,6 @@ const formatDate = (date) => {
         day: 'numeric',
         month: 'short',
         year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
     });
 };
 
@@ -371,30 +352,23 @@ const relativeTime = (date) => {
     const diffYears = Math.floor(diffDays / 365);
 
     if (diffSeconds < 30) return 'baru saja';
-    if (diffSeconds < 60) return `${diffSeconds} detik lalu`;
-    if (diffMinutes < 60) return `${diffMinutes} menit lalu`;
-    if (diffHours < 24) return `${diffHours} jam lalu`;
+    if (diffSeconds < 60) return `${diffSeconds}d lalu`;
+    if (diffMinutes < 60) return `${diffMinutes}m lalu`;
+    if (diffHours < 24) return `${diffHours}j lalu`;
     if (diffDays === 1) return 'kemarin';
-    if (diffDays < 7) return `${diffDays} hari lalu`;
-    if (diffWeeks === 1) return '1 minggu lalu';
-    if (diffWeeks < 4) return `${diffWeeks} minggu lalu`;
-    if (diffMonths === 1) return '1 bulan lalu';
-    if (diffMonths < 12) return `${diffMonths} bulan lalu`;
-    if (diffYears === 1) return '1 tahun lalu';
-    return `${diffYears} tahun lalu`;
+    if (diffDays < 7) return `${diffDays}h lalu`;
+    if (diffWeeks === 1) return '1mg lalu';
+    if (diffMonths < 12) return `${diffMonths}bln lalu`;
+    return `${diffYears}th lalu`;
 };
 
-// State untuk show/hide balasan (Default: hidden untuk kerapian, atau visible sesuai preferensi)
-// Kita buat default expanded untuk UX yang lebih baik, tapi user bisa toggle
 const hiddenReplies = ref(new Set());
-
 const toggleReplies = (komentarId) => {
     if (hiddenReplies.value.has(komentarId)) {
         hiddenReplies.value.delete(komentarId);
     } else {
         hiddenReplies.value.add(komentarId);
     }
-    // Re-assign to trigger reactivity if needed (Vue 3 Set reactivity can be tricky with direct mutation depending on version)
     hiddenReplies.value = new Set(hiddenReplies.value);
 };
 </script>
@@ -404,571 +378,387 @@ const toggleReplies = (komentarId) => {
     <Head :title="proyek.judul" />
 
     <PublicLayout>
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <!-- Navigasi Kembali -->
-            <div class="mb-6">
-                <Link :href="isOwner ? route('proyek.saya') : route('proyek.index')"
-                    class="inline-flex items-center text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors group">
-                <div class="bg-gray-100 group-hover:bg-indigo-50 p-1.5 rounded-full mr-2 transition-colors">
-                    <ChevronLeft :size="16" />
+        <div class="min-h-screen bg-[#FDF8FD]">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+
+                <div class="mb-8">
+                    <Link :href="route('proyek.index')"
+                        class="inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium text-gray-600 hover:bg-gray-200/50 hover:text-gray-900 transition-all">
+                    <ChevronLeft :size="20" />
+                    <span>Kembali ke Jelajah</span>
+                    </Link>
                 </div>
-                {{ isOwner ? 'Kembali ke Dashboard Saya' : 'Jelajah Proyek Lain' }}
-                </Link>
-            </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                <!-- KONTEN KIRI (8 kolom) -->
-                <div class="lg:col-span-8 space-y-8">
-                    <!-- Gambar Hero -->
-                    <div
-                        class="rounded-3xl overflow-hidden shadow-xl shadow-indigo-100/50 border border-gray-100 aspect-video relative group">
-                        <img :src="'/storage/' + proyek.thumbnail"
-                            class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                            :alt="proyek.judul">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
 
-                        <!-- Badge Admin -->
-                        <div v-if="isAdmin && !isOwner"
-                            class="absolute top-4 right-4 bg-white/90 backdrop-blur text-red-600 px-3 py-1.5 rounded-full shadow-sm border border-red-100 flex items-center gap-1.5 text-xs font-bold">
-                            <ShieldAlert :size="14" />
-                            MODE ADMIN
-                        </div>
-                    </div>
+                    <div class="lg:col-span-8 space-y-8">
 
-                    <!-- Judul & Konten -->
-                    <div class="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
-                        <!-- Baris kategori & tanggal -->
-                        <div class="flex items-center gap-3 mb-4">
-                            <span
-                                class="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-600 border border-indigo-100 uppercase tracking-wider">
-                                {{ proyek.kategori.nama }}
-                            </span>
-                            <span class="text-xs text-gray-400 flex items-center gap-1">
-                                <Clock :size="12" />
-                                {{ new Date(proyek.terbit_pada).toLocaleDateString('id-ID', {
-                                    day: 'numeric',
-                                    month: 'long',
-                                    year: 'numeric'
-                                }) }}
-                            </span>
-                        </div>
-                        <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-6 tracking-tight leading-tight">
-                            {{ proyek.judul }}
-                        </h1>
-
-                        <div class="prose prose-lg prose-indigo max-w-none text-gray-600 leading-relaxed"
-                            v-html="proyek.konten_html"></div>
-                    </div>
-
-                    <!-- Galeri Screenshot -->
-                    <div v-if="proyek.galeri_gambar && proyek.galeri_gambar.length > 0"
-                        class="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
-                        <h3 class="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-                            <span class="w-1.5 h-6 bg-indigo-500 rounded-full"></span>
-                            Galeri Proyek
-                        </h3>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div v-for="(img, i) in proyek.galeri_gambar" :key="i"
-                                class="rounded-2xl overflow-hidden border border-gray-100 hover:shadow-md transition-all cursor-pointer h-48">
-                                <img :src="'/storage/' + img"
-                                    class="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
-                                    alt="Screenshot proyek" />
+                        <div class="bg-white rounded-[28px] p-2 shadow-sm border border-gray-100/50">
+                            <div class="rounded-[24px] overflow-hidden aspect-video relative group bg-gray-100">
+                                <img :src="'/storage/' + proyek.thumbnail"
+                                    class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                    :alt="proyek.judul">
                             </div>
-                        </div>
-                    </div>
 
-                    <!-- BAGIAN KOMENTAR -->
-                    <div class="bg-white rounded-3xl p-8 shadow-sm border border-gray-100" id="komentar">
-                        <div class="flex items-center justify-between mb-8">
-                            <h3 class="text-xl font-bold text-gray-900 flex items-center gap-2">
-                                <MessageSquare :size="24" class="text-indigo-600" />
-                                Diskusi
-                            </h3>
-                            <span
-                                class="bg-gray-50 text-gray-600 px-4 py-1.5 rounded-full text-xs font-bold border border-gray-100">
-                                {{ totalKomentarCount }} Komentar
-                            </span>
-                        </div>
+                            <div class="px-6 py-6 sm:px-8 sm:py-8">
+                                <div class="flex flex-wrap items-center gap-3 mb-6">
+                                    <span
+                                        class="px-4 py-1.5 rounded-lg text-sm font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                        {{ proyek.kategori.nama }}
+                                    </span>
 
-                        <!-- Form Input Komentar -->
-                        <div class="flex gap-4 mb-10">
-                            <div
-                                class="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex-shrink-0">
-                                <img v-if="user"
-                                    :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(user.nama)}&background=random`"
-                                    class="w-full h-full object-cover">
-                                <div v-else class="w-full h-full flex items-center justify-center text-gray-400">
-                                    <MessageCircle :size="20" />
-                                </div>
-                            </div>
-                            <div class="flex-1">
-                                <div v-if="user">
-                                    <div class="relative group">
-                                        <textarea v-model="commentForm.isi" rows="3"
-                                            class="w-full rounded-2xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-500 focus:ring-0 text-sm p-4 pr-4 transition-all resize-none placeholder:text-gray-400"
-                                            placeholder="Tambahkan komentar..."></textarea>
+                                    <span class="text-gray-300 mx-1">•</span>
 
-                                        <!-- Tombol Kirim Professional -->
-                                        <div class="flex justify-end mt-2">
-                                            <button @click="submitComment" :disabled="!commentForm.isi"
-                                                class="inline-flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-full text-sm font-bold hover:bg-indigo-700 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:shadow-none transform active:scale-95">
-                                                Kirim
-                                                <Send :size="14" />
-                                            </button>
-                                        </div>
+                                    <div class="flex items-center gap-1.5 text-gray-500 text-sm">
+                                        <Calendar :size="16" class="text-gray-400" />
+                                        <span>{{ formatDate(proyek.terbit_pada) }}</span>
                                     </div>
                                 </div>
-                                <div v-else
-                                    class="bg-gray-50 rounded-2xl p-6 text-center border border-gray-200 border-dashed">
-                                    <p class="text-sm text-gray-500 mb-3">Login untuk bergabung dalam diskusi</p>
-                                    <Link :href="route('login')"
-                                        class="inline-block px-6 py-2 bg-white border border-gray-200 rounded-full text-sm font-bold text-gray-700 hover:border-indigo-300 hover:text-indigo-600 transition-all shadow-sm">
-                                    Login / Daftar
-                                    </Link>
+
+                                <h1
+                                    class="text-4xl sm:text-5xl font-normal text-[#1d1b20] mb-8 leading-tight tracking-tight">
+                                    {{ proyek.judul }}
+                                </h1>
+
+                                <div class="prose prose-lg prose-slate max-w-none text-gray-600 leading-relaxed 
+                                    prose-headings:font-normal prose-headings:text-[#1d1b20] prose-a:text-indigo-600 prose-img:rounded-[20px]"
+                                    v-html="proyek.konten_html">
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Daftar Komentar -->
-                        <div class="space-y-8">
-                            <!-- State Kosong -->
-                            <div v-if="komentars.length === 0" class="text-center py-12 text-gray-400">
-                                <MessageSquare :size="48" class="mx-auto mb-4 opacity-30" />
-                                <p class="text-sm font-medium">Belum ada komentar. Jadilah yang pertama!</p>
+                        <div class="bg-white rounded-[28px] p-6 sm:p-8 shadow-sm border border-gray-100/50"
+                            id="komentar">
+                            <div class="flex items-center justify-between mb-8">
+                                <h3 class="text-2xl font-normal text-[#1d1b20]">Diskusi</h3>
+                                <div class="bg-indigo-50 text-indigo-700 px-4 py-1.5 rounded-full text-sm font-bold">
+                                    {{ totalKomentarCount }}
+                                </div>
                             </div>
 
-                            <!-- Komentar Utama Loop -->
-                            <div v-for="k in komentars" :key="k.id" class="relative group">
-                                <div class="flex gap-4">
-                                    <!-- Avatar Komentar Utama -->
-                                    <img :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(k.user.nama)}&background=random`"
-                                        class="w-10 h-10 rounded-full border border-gray-100 shadow-sm z-10 relative bg-white object-cover flex-shrink-0">
+                            <div class="flex gap-4 mb-10">
+                                <div class="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
+                                    <img v-if="user"
+                                        :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(user.nama)}&background=random`"
+                                        class="w-full h-full object-cover">
+                                    <div v-else class="w-full h-full flex items-center justify-center text-gray-400">
+                                        <Users :size="20" />
+                                    </div>
+                                </div>
+                                <div class="flex-1">
+                                    <div v-if="user">
+                                        <div
+                                            class="relative group bg-gray-50 rounded-[24px] border border-transparent focus-within:border-indigo-300 focus-within:bg-white focus-within:shadow-md transition-all duration-200">
+                                            <textarea v-model="commentForm.isi" rows="3"
+                                                class="w-full bg-transparent border-none rounded-[24px] focus:ring-0 text-gray-700 p-4 resize-none placeholder:text-gray-400"
+                                                placeholder="Tulis pendapat Anda..."></textarea>
 
-                                    <div class="flex-1 min-w-0">
-                                        <!-- Header Komentar -->
-                                        <div class="flex items-start justify-between gap-2 mb-1">
-                                            <div class="flex-1">
-                                                <div class="flex items-center gap-2 flex-wrap">
-                                                    <h4 class="text-sm font-bold text-gray-900">{{ k.user.nama }}</h4>
-                                                    <span v-if="k.user_id === proyek.user_id"
-                                                        class="bg-indigo-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wide">PEMBUAT</span>
-                                                    <span class="text-xs text-gray-400">{{ relativeTime(k.created_at)
-                                                        }}</span>
-                                                    <span v-if="isEdited(k)" class="text-xs text-gray-400 italic">·
-                                                        (diedit)</span>
+                                            <div class="flex justify-end p-2 pr-3">
+                                                <button @click="submitComment" :disabled="!commentForm.isi"
+                                                    class="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-full text-sm font-medium hover:bg-indigo-700 hover:shadow-lg disabled:opacity-50 disabled:shadow-none transition-all active:scale-95">
+                                                    Kirim
+                                                    <Send :size="16" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div v-else
+                                        class="bg-gray-50 rounded-[20px] p-6 text-center border border-dashed border-gray-300">
+                                        <p class="text-gray-500 mb-3">Ingin bergabung dalam diskusi?</p>
+                                        <Link :href="route('login')"
+                                            class="inline-block px-6 py-2 bg-white border border-gray-300 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 hover:border-indigo-200 transition-all">
+                                        Masuk ke Akun
+                                        </Link>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="space-y-8">
+                                <div v-if="komentars.length === 0" class="text-center py-10">
+                                    <div
+                                        class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-300">
+                                        <MessageSquare :size="24" />
+                                    </div>
+                                    <p class="text-gray-400">Belum ada komentar.</p>
+                                </div>
+
+                                <div v-for="k in komentars" :key="k.id" class="group/comment">
+                                    <div class="flex gap-4">
+                                        <img :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(k.user.nama)}&background=random`"
+                                            class="w-10 h-10 rounded-full shadow-sm object-cover flex-shrink-0">
+
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center gap-2 mb-1">
+                                                <span class="font-semibold text-gray-900 text-sm">{{ k.user.nama
+                                                    }}</span>
+                                                <span v-if="k.user_id === proyek.user_id"
+                                                    class="bg-indigo-100 text-indigo-700 text-[10px] px-2 py-0.5 rounded-full font-bold">AUTHOR</span>
+                                                <span class="text-xs text-gray-400">• {{ relativeTime(k.created_at)
+                                                    }}</span>
+                                                <span v-if="isEdited(k)" class="text-xs text-gray-300">(diedit)</span>
+                                            </div>
+
+                                            <div v-if="editingCommentId !== k.id"
+                                                class="text-gray-700 text-[15px] leading-relaxed mb-3 prose prose-sm max-w-none"
+                                                v-html="k.isi_html || k.isi">
+                                            </div>
+
+                                            <div v-else class="mb-3">
+                                                <textarea v-model="editCommentForm.isi" rows="3"
+                                                    class="w-full rounded-[18px] border-gray-300 bg-gray-50 focus:bg-white focus:border-indigo-500 focus:ring-indigo-200 text-sm p-3"></textarea>
+                                                <div class="flex justify-end gap-2 mt-2">
+                                                    <button @click="cancelEditComment"
+                                                        class="px-4 py-2 rounded-full text-xs font-bold text-gray-500 hover:bg-gray-100">Batal</button>
+                                                    <button @click="updateComment"
+                                                        class="px-4 py-2 bg-indigo-600 text-white rounded-full text-xs font-bold hover:shadow-md">Simpan</button>
                                                 </div>
                                             </div>
 
-                                            <!-- Aksi Admin/Pemilik -->
-                                            <div v-if="user && (user.id === k.user_id || isAdmin)"
-                                                class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button v-if="user.id === k.user_id" @click="startEditComment(k)"
-                                                    class="p-1 text-gray-400 hover:text-indigo-600 transition-colors rounded-md hover:bg-indigo-50"
-                                                    title="Edit">
-                                                    <Edit :size="14" />
-                                                </button>
-                                                <button @click="showDeleteModal(k.id)"
-                                                    class="p-1 text-gray-400 hover:text-red-600 transition-colors rounded-md hover:bg-red-50"
-                                                    title="Hapus">
-                                                    <Trash2 :size="14" />
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <!-- Isi Komentar -->
-                                        <div v-if="editingCommentId !== k.id"
-                                            class="text-gray-700 text-sm leading-relaxed mb-3 prose prose-sm max-w-none"
-                                            v-html="k.isi_html || k.isi"></div>
-                                        <div v-else class="mb-3">
-                                            <textarea v-model="editCommentForm.isi" rows="3"
-                                                class="w-full rounded-xl border-gray-300 text-sm p-3 focus:border-indigo-500 focus:ring-indigo-200 shadow-sm"></textarea>
-                                            <div class="flex justify-end gap-2 mt-2">
-                                                <button @click="cancelEditComment"
-                                                    class="px-3 py-1.5 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-100 transition-colors">Batal</button>
-                                                <button @click="updateComment"
-                                                    :disabled="editCommentForm.processing || !editCommentForm.isi"
-                                                    class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition-colors disabled:opacity-50">Simpan</button>
-                                            </div>
-                                        </div>
-
-                                        <!-- Action Bar (Like, Dislike, Reply, View Replies) -->
-                                        <div class="flex items-center gap-5">
-                                            <!-- Like Button (Tanpa Text "Suka") -->
-                                            <button @click="toggleLikeComment(k)"
-                                                class="flex items-center gap-1.5 text-xs font-bold transition-colors group/btn"
-                                                :class="k.is_liked ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'">
-                                                <ThumbsUp :size="16" :class="{ 'fill-current': k.is_liked }"
-                                                    class="transition-transform group-active/btn:scale-90" />
-                                                <span v-if="k.jumlah_suka > 0">{{ k.jumlah_suka }}</span>
-                                            </button>
-
-                                            <!-- Dislike -->
-                                            <button @click="toggleDislikeComment(k)"
-                                                class="flex items-center gap-1.5 text-xs font-bold transition-colors group/btn"
-                                                :class="k.is_disliked ? 'text-red-500' : 'text-gray-400 hover:text-gray-600'">
-                                                <ThumbsDown :size="16" :class="{ 'fill-current': k.is_disliked }"
-                                                    class="transition-transform group-active/btn:scale-90" />
-                                                <span v-if="k.jumlah_dislikes > 0">{{ k.jumlah_dislikes }}</span>
-                                            </button>
-
-                                            <!-- Tombol Balas -->
-                                            <button v-if="user" @click="startReply(k.id)"
-                                                class="text-xs font-bold text-gray-500 hover:text-gray-900 flex items-center gap-1.5 transition-colors py-1 px-2 rounded-md hover:bg-gray-100">
-                                                <MessageCircle :size="16" />
-                                                Balas
-                                            </button>
-
-                                            <!-- Tombol Toggle Balasan (Style sama dengan Balas) -->
-                                            <button v-if="k.balasan && k.balasan.length > 0"
-                                                @click="toggleReplies(k.id)"
-                                                class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 transition-colors py-1 px-2 rounded-md hover:bg-indigo-50">
-                                                <template v-if="hiddenReplies.has(k.id)">
-                                                    <ChevronDown :size="16" />
-                                                    Lihat {{ k.balasan.length }} balasan
-                                                </template>
-                                                <template v-else>
-                                                    <ChevronUp :size="16" />
-                                                    Sembunyikan
-                                                </template>
-                                            </button>
-                                        </div>
-
-                                        <!-- CONTAINER BALASAN (TREE VISUAL) -->
-                                        <div v-if="k.balasan && k.balasan.length > 0 && !hiddenReplies.has(k.id)"
-                                            class="mt-2 relative">
-                                            <!-- Garis Vertikal Induk (Menghubungkan Avatar Utama ke Bawah) -->
-                                            <!-- Offset left harus pas ditengah avatar utama (w-10 -> center 1.25rem / 20px) -->
-                                            <!-- Kita geser container balasan ke kanan agar avatar balasan sejajar dengan garis -->
-
-                                            <div class="pt-2 pb-2"> <!-- Spacer -->
-                                                <div v-for="(b, index) in k.balasan" :key="b.id"
-                                                    class="relative pl-12 mb-4 last:mb-0">
-                                                    <!-- VISUAL ROUTECAUSE / LINE THREAD (CURVED) -->
-                                                    <!-- Garis Vertikal dari atas sampai belokan -->
-                                                    <!-- Posisi absolute relative terhadap parent comment avatar center (-left 44px approx dari pl-12) -->
-                                                    <!-- Kita gunakan pseudo-element atau div absolute di dalam loop -->
-
-                                                    <!-- Garis Melengkung (L Shape) -->
+                                            <div class="flex items-center gap-6">
+                                                <button @click="toggleLikeComment(k)"
+                                                    class="flex items-center gap-1.5 group/btn transition-colors"
+                                                    :class="k.is_liked ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'">
                                                     <div
-                                                        class="absolute left-[20px] top-[-10px] bottom-auto w-8 h-[40px] border-b-2 border-l-2 border-gray-200 rounded-bl-2xl pointer-events-none">
-                                                        <!-- Top adjustment depends on spacing. height adjustment connects to avatar center -->
+                                                        class="p-1.5 rounded-full group-hover/btn:bg-indigo-50 transition-colors">
+                                                        <ThumbsUp :size="18" :class="{ 'fill-current': k.is_liked }" />
                                                     </div>
+                                                    <span class="text-xs font-bold" v-if="k.jumlah_suka > 0">{{
+                                                        k.jumlah_suka }}</span>
+                                                </button>
 
-                                                    <!-- Jika bukan item terakhir, lanjutkan garis vertikal ke bawah -->
-                                                    <div v-if="index !== k.balasan.length - 1"
-                                                        class="absolute left-[20px] top-[30px] bottom-[-20px] w-0.5 bg-gray-200 pointer-events-none">
+                                                <button @click="toggleDislikeComment(k)"
+                                                    class="flex items-center gap-1.5 group/btn transition-colors"
+                                                    :class="k.is_disliked ? 'text-red-500' : 'text-gray-400 hover:text-gray-600'">
+                                                    <div
+                                                        class="p-1.5 rounded-full group-hover/btn:bg-red-50 transition-colors">
+                                                        <ThumbsDown :size="18"
+                                                            :class="{ 'fill-current': k.is_disliked }" />
                                                     </div>
+                                                </button>
 
-                                                    <!-- Item Balasan -->
-                                                    <div class="flex gap-4 group/reply">
-                                                        <!-- Avatar Balasan (Ukuran SAMA dengan utama) -->
-                                                        <img :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(b.user.nama)}&background=random`"
-                                                            class="w-10 h-10 rounded-full border border-white shadow-sm z-10 relative bg-white object-cover flex-shrink-0">
+                                                <button v-if="user" @click="startReply(k.id)"
+                                                    class="text-xs font-bold text-gray-400 hover:text-gray-900 flex items-center gap-1 transition-colors">
+                                                    Balas
+                                                </button>
 
-                                                        <div class="flex-1 min-w-0">
-                                                            <!-- Header Balasan -->
-                                                            <div class="flex items-start justify-between gap-2 mb-1">
-                                                                <div class="flex-1">
-                                                                    <div class="flex items-center gap-2 flex-wrap">
-                                                                        <span class="font-bold text-sm text-gray-900">{{
-                                                                            b.user.nama }}</span>
-                                                                        <span v-if="b.user_id === proyek.user_id"
-                                                                            class="bg-indigo-100 text-indigo-700 text-[10px] px-2 py-0.5 rounded-full font-bold">PEMBUAT</span>
-                                                                        <span class="text-xs text-gray-400">{{
-                                                                            relativeTime(b.created_at) }}</span>
-                                                                    </div>
-                                                                </div>
-                                                                <!-- Aksi Edit/Hapus Balasan -->
-                                                                <div v-if="user && (user.id === b.user_id || isAdmin)"
-                                                                    class="flex gap-1 opacity-0 group-hover/reply:opacity-100 transition-opacity">
-                                                                    <button v-if="user.id === b.user_id"
-                                                                        @click="startEditReply(b)"
-                                                                        class="p-1 text-gray-400 hover:text-indigo-600 rounded-md hover:bg-indigo-50">
-                                                                        <Edit :size="14" />
-                                                                    </button>
-                                                                    <button @click="showDeleteModal(b.id)"
-                                                                        class="p-1 text-gray-400 hover:text-red-600 rounded-md hover:bg-red-50">
-                                                                        <Trash2 :size="14" />
-                                                                    </button>
-                                                                </div>
+                                                <div v-if="user && (user.id === k.user_id || isAdmin)"
+                                                    class="flex gap-2 ml-auto">
+                                                    <button v-if="user.id === k.user_id" @click="startEditComment(k)"
+                                                        class="text-gray-400 hover:text-indigo-600 p-1">
+                                                        <Edit :size="14" />
+                                                    </button>
+                                                    <button @click="showDeleteModal(k.id)"
+                                                        class="text-gray-400 hover:text-red-600 p-1">
+                                                        <Trash2 :size="14" />
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div v-if="k.balasan && k.balasan.length > 0" class="mt-3">
+                                                <button @click="toggleReplies(k.id)"
+                                                    class="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-800 text-xs font-bold px-3 py-1.5 rounded-full hover:bg-indigo-50 transition-colors">
+                                                    <div class="w-5 h-px bg-indigo-200"></div>
+                                                    {{ hiddenReplies.has(k.id) ? `Lihat ${k.balasan.length} balasan` :
+                                                    'Sembunyikan balasan' }}
+                                                </button>
+                                            </div>
+
+                                            <div v-if="k.balasan && k.balasan.length > 0 && !hiddenReplies.has(k.id)"
+                                                class="mt-4 pl-4 border-l-2 border-gray-100">
+                                                <div v-for="b in k.balasan" :key="b.id"
+                                                    class="flex gap-4 mb-6 last:mb-0 relative group/reply">
+                                                    <img :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(b.user.nama)}&background=random`"
+                                                        class="w-8 h-8 rounded-full shadow-sm object-cover flex-shrink-0">
+
+                                                    <div class="flex-1 min-w-0">
+                                                        <div class="flex items-center gap-2 mb-1">
+                                                            <span class="font-semibold text-gray-900 text-sm">{{
+                                                                b.user.nama }}</span>
+                                                            <span v-if="b.user_id === proyek.user_id"
+                                                                class="bg-indigo-100 text-indigo-700 text-[9px] px-1.5 py-0.5 rounded-full font-bold">AUTHOR</span>
+                                                            <span class="text-xs text-gray-400">{{
+                                                                relativeTime(b.created_at) }}</span>
+                                                        </div>
+
+                                                        <div v-if="editingReplyId !== b.id"
+                                                            class="text-gray-700 text-sm mb-2"
+                                                            v-html="b.isi_html || b.isi"></div>
+                                                        <div v-else class="mb-2">
+                                                            <textarea v-model="editReplyForm.isi" rows="2"
+                                                                class="w-full rounded-[16px] border-gray-300 text-sm p-2"></textarea>
+                                                            <div class="flex justify-end gap-2 mt-1">
+                                                                <button @click="cancelEditReply"
+                                                                    class="text-xs font-bold text-gray-500">Batal</button>
+                                                                <button @click="updateReply"
+                                                                    class="text-xs font-bold text-indigo-600">Simpan</button>
                                                             </div>
+                                                        </div>
 
-                                                            <!-- Isi Balasan -->
-                                                            <div v-if="editingReplyId !== b.id">
-                                                                <div class="text-gray-700 text-sm leading-relaxed mb-2 prose prose-sm max-w-none"
-                                                                    v-html="b.isi_html || b.isi"></div>
-
-                                                                <!-- Aksi Balasan (Like/Dislike) -->
-                                                                <div class="flex gap-4">
-                                                                    <button @click="toggleLikeComment(b)"
-                                                                        class="flex items-center gap-1 text-xs font-bold transition-colors"
-                                                                        :class="b.is_liked ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'">
-                                                                        <ThumbsUp :size="14"
-                                                                            :class="{ 'fill-current': b.is_liked }" />
-                                                                        {{ b.jumlah_suka || '' }}
-                                                                    </button>
-                                                                    <button @click="toggleDislikeComment(b)"
-                                                                        class="flex items-center gap-1 text-xs font-bold transition-colors"
-                                                                        :class="b.is_disliked ? 'text-red-500' : 'text-gray-400 hover:text-gray-600'">
-                                                                        <ThumbsDown :size="14"
-                                                                            :class="{ 'fill-current': b.is_disliked }" />
-                                                                        {{ b.jumlah_dislikes || '' }}
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-
-                                                            <!-- Edit Form Balasan -->
-                                                            <div v-else>
-                                                                <textarea v-model="editReplyForm.isi" rows="2"
-                                                                    class="w-full rounded-xl border-gray-300 text-sm p-3 focus:border-indigo-500 focus:ring-indigo-200 mb-2"></textarea>
-                                                                <div class="flex justify-end gap-2">
-                                                                    <button @click="cancelEditReply"
-                                                                        class="px-3 py-1.5 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-100">Batal</button>
-                                                                    <button @click="updateReply"
-                                                                        :disabled="editReplyForm.processing || !editReplyForm.isi"
-                                                                        class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 disabled:opacity-50">Simpan</button>
-                                                                </div>
+                                                        <div class="flex gap-4">
+                                                            <button @click="toggleLikeComment(b)"
+                                                                class="text-xs text-gray-400 hover:text-indigo-600 flex items-center gap-1">
+                                                                <ThumbsUp :size="14"
+                                                                    :class="{ 'fill-current text-indigo-600': b.is_liked }" />
+                                                                {{ b.jumlah_suka || '' }}
+                                                            </button>
+                                                            <button @click="toggleDislikeComment(b)"
+                                                                class="text-xs text-gray-400 hover:text-red-500">
+                                                                <ThumbsDown :size="14"
+                                                                    :class="{ 'fill-current text-red-500': b.is_disliked }" />
+                                                            </button>
+                                                            <div v-if="user && (user.id === b.user_id || isAdmin)"
+                                                                class="flex gap-2 ml-auto opacity-0 group-hover/reply:opacity-100 transition-opacity">
+                                                                <button v-if="user.id === b.user_id"
+                                                                    @click="startEditReply(b)"
+                                                                    class="text-gray-400 hover:text-indigo-600">
+                                                                    <Edit :size="12" />
+                                                                </button>
+                                                                <button @click="showDeleteModal(b.id)"
+                                                                    class="text-gray-400 hover:text-red-600">
+                                                                    <Trash2 :size="12" />
+                                                                </button>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
 
-                                        <!-- FORM BALASAN (DI BAWAH LIST BALASAN) -->
-                                        <div v-if="replyingToId === k.id"
-                                            class="mt-4 pl-12 relative animate-in fade-in slide-in-from-top-2 duration-200">
-                                            <!-- Garis konektor untuk form -->
-                                            <div
-                                                class="absolute left-[20px] top-[-10px] w-8 h-[40px] border-b-2 border-l-2 border-gray-200 rounded-bl-2xl pointer-events-none">
-                                            </div>
-
-                                            <div class="flex gap-3">
-                                                <div
-                                                    class="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex-shrink-0 overflow-hidden z-10">
-                                                    <img v-if="user"
-                                                        :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(user.nama)}&background=random`"
-                                                        class="w-full h-full object-cover">
-                                                </div>
-                                                <div class="flex-1">
+                                            <div v-if="replyingToId === k.id"
+                                                class="mt-4 pl-4 border-l-2 border-gray-100">
+                                                <div class="bg-gray-50 rounded-[20px] p-3 border border-indigo-100">
                                                     <textarea v-model="replyForm.isi" rows="2"
-                                                        class="w-full rounded-xl border-gray-200 text-sm bg-gray-50 focus:bg-white focus:border-indigo-500 focus:ring-indigo-200 p-3"
-                                                        placeholder="Tulis balasan Anda..."></textarea>
+                                                        class="w-full bg-transparent border-none text-sm focus:ring-0 resize-none"
+                                                        placeholder="Balas komentar..."></textarea>
                                                     <div class="flex justify-end gap-2 mt-2">
                                                         <button @click="cancelReply"
-                                                            class="px-4 py-2 rounded-full text-xs font-bold text-gray-500 hover:bg-gray-100 transition-colors">Batal</button>
+                                                            class="px-3 py-1.5 rounded-full text-xs font-bold text-gray-500 hover:bg-gray-200">Batal</button>
                                                         <button @click="submitReply"
-                                                            :disabled="replyForm.processing || !replyForm.isi"
-                                                            class="px-4 py-2 bg-indigo-600 text-white rounded-full text-xs font-bold hover:bg-indigo-700 transition-all shadow-sm hover:shadow disabled:opacity-50">
-                                                            Kirim Balasan
-                                                        </button>
+                                                            class="px-3 py-1.5 bg-indigo-600 text-white rounded-full text-xs font-bold hover:shadow-md">Balas</button>
                                                     </div>
                                                 </div>
                                             </div>
+
                                         </div>
-
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- SIDEBAR KANAN (4 kolom) -->
-                <div class="lg:col-span-4 space-y-6">
+                    <div class="lg:col-span-4 space-y-6">
 
-                    <!-- CARD DASHBOARD PEMBUAT / ADMIN (DESAIN BARU CLEAN PROFESSIONAL) -->
-                    <div v-if="isManagementMode"
-                        class="bg-white rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden relative ring-1 ring-gray-900/5">
+                        <!-- Removed management mode panel - use Dashboard for project management -->
 
-                        <!-- Header Clean White -->
-                        <div class="p-6 border-b border-gray-100 bg-white">
-                            <div class="flex justify-between items-center mb-1">
-                                <h3 class="font-bold text-gray-900 text-base tracking-tight flex items-center gap-2">
-                                    <Settings :size="18" class="text-indigo-600" />
-                                    {{ isOwner ? 'Panel Creator' : 'Administrasi' }}
-                                </h3>
-                                <span class="px-2.5 py-1 rounded-md text-[10px] font-bold border tracking-wide"
-                                    :class="proyek.status === 'published' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-gray-50 text-gray-600 border-gray-100'">
-                                    {{ proyek.status.toUpperCase() }}
-                                </span>
-                            </div>
-                            <p class="text-xs text-gray-500">Kelola proyek dan pantau performa.</p>
-                        </div>
-
-                        <!-- Konten Card -->
-                        <div class="p-6 bg-gray-50/30">
-                            <div class="grid grid-cols-3 gap-3 mb-6">
-                                <div
-                                    class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-                                    <div class="text-xs text-gray-400 font-medium mb-1">Views</div>
-                                    <div class="text-lg font-extrabold text-gray-900">{{ proyek.jumlah_lihat }}</div>
-                                </div>
-                                <div
-                                    class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-                                    <div class="text-xs text-gray-400 font-medium mb-1">Likes</div>
-                                    <div class="text-lg font-extrabold text-gray-900">{{ likeCount }}</div>
-                                </div>
-                                <div
-                                    class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-                                    <div class="text-xs text-gray-400 font-medium mb-1">Saves</div>
-                                    <div class="text-lg font-extrabold text-gray-900">{{ proyek.jumlah_simpan }}</div>
-                                </div>
-                            </div>
-
-                            <div class="space-y-3">
-                                <button @click="editProyek"
-                                    class="w-full py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold text-sm hover:border-indigo-500 hover:text-indigo-600 hover:shadow-md transition-all flex justify-center items-center gap-2">
-                                    <Edit :size="16" /> Edit Proyek
-                                </button>
-                                <button @click="deleteProyek"
-                                    class="w-full py-2.5 bg-white border border-red-100 text-red-500 rounded-xl font-bold text-sm hover:bg-red-50 transition-all flex justify-center items-center gap-2">
-                                    <Trash2 :size="16" /> Hapus Proyek
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- CARD STATISTIK PUBLIK -->
-                    <div v-else class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-                        <div class="flex justify-between items-center mb-6">
-                            <div class="flex items-center gap-3">
+                        <!-- Creator & Engagement Section -->
+                        <div class="bg-white rounded-[28px] p-6 shadow-sm border border-gray-100/50">
+                            <div class="flex items-center gap-4 mb-6">
                                 <img :src="proyek.user.avatar ? '/storage/' + proyek.user.avatar : `https://ui-avatars.com/api/?name=${encodeURIComponent(proyek.user.nama)}&background=random`"
-                                    class="w-12 h-12 rounded-full border-2 border-white shadow-sm object-cover">
+                                    class="w-14 h-14 rounded-full border-4 border-gray-50 shadow-sm object-cover">
                                 <div>
-                                    <div class="text-xs text-gray-500 font-medium">Dibuat oleh</div>
-                                    <div class="text-sm font-bold text-gray-900">{{ proyek.user.nama }}</div>
-                                    <div class="text-xs text-gray-500">
-                                        {{ proyek.user.prodi?.nama_prodi || 'Mahasiswa' }} <span
-                                            v-if="proyek.user.nim">· {{
-                                                proyek.user.nim }}</span>
-                                    </div>
+                                    <div class="text-xs text-gray-500 font-medium uppercase tracking-wide">Creator</div>
+                                    <div class="text-lg font-normal text-[#1d1b20]">{{ proyek.user.nama }}</div>
+                                    <div class="text-xs text-gray-500">{{ proyek.user.prodi?.nama_prodi || 'Mahasiswa'
+                                        }}</div>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-wrap gap-2 mb-6">
+                                <div class="flex items-center gap-2 bg-indigo-50 text-indigo-900 px-4 py-2 rounded-2xl flex-1 justify-center"
+                                    title="Dilihat">
+                                    <Eye :size="20" class="text-indigo-700" />
+                                    <span class="font-bold text-sm">{{ proyek.jumlah_lihat }}</span>
+                                </div>
+                                <div class="flex items-center gap-2 bg-pink-50 text-pink-900 px-4 py-2 rounded-2xl flex-1 justify-center"
+                                    title="Disukai">
+                                    <Heart :size="20" class="text-pink-600 fill-current" />
+                                    <span class="font-bold text-sm">{{ likeCount }}</span>
+                                </div>
+                                <div class="flex items-center gap-2 bg-emerald-50 text-emerald-900 px-4 py-2 rounded-2xl flex-1 justify-center"
+                                    title="Disimpan">
+                                    <Bookmark :size="20" class="text-emerald-600 fill-current" />
+                                    <span class="font-bold text-sm">{{ proyek.jumlah_simpan }}</span>
+                                </div>
+                            </div>
+
+                            <div class="flex gap-2">
+                                <button @click="toggleLike"
+                                    class="h-14 w-14 rounded-[16px] flex items-center justify-center transition-all duration-300"
+                                    :class="isLiked ? 'bg-pink-100 text-pink-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'">
+                                    <Heart :size="24" :class="{ 'fill-current': isLiked }" />
+                                </button>
+
+                                <button @click="toggleSave"
+                                    class="h-14 w-14 rounded-[16px] flex items-center justify-center transition-all duration-300"
+                                    :class="isSaved ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'">
+                                    <Bookmark :size="24" :class="{ 'fill-current': isSaved }" />
+                                </button>
+
+                                <button @click="shareProyek"
+                                    class="flex-1 h-14 bg-[#1d1b20] text-white rounded-[16px] font-medium flex items-center justify-center gap-2 hover:shadow-lg transition-all">
+                                    <Share2 :size="20" />
+                                    <span>Bagikan</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-[28px] p-6 shadow-sm border border-gray-100/50">
+                            <h4 class="text-sm font-medium text-gray-500 mb-4 flex items-center gap-2">
+                                <Code2 :size="18" /> Stack Teknologi
+                            </h4>
+                            <div class="flex flex-wrap gap-2">
+                                <div v-for="t in proyek.teknologi" :key="t.id"
+                                    class="pl-2 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 flex items-center gap-2 hover:bg-white hover:shadow-sm transition-all">
+                                    <img :src="t.ikon_url" class="w-5 h-5 object-contain">
+                                    {{ t.nama }}
                                 </div>
                             </div>
                         </div>
 
-                        <div class="flex items-center justify-around py-4 border-t border-b border-gray-50 mb-6">
-                            <div class="text-center">
-                                <div class="font-extrabold text-gray-900 text-lg">{{ proyek.jumlah_lihat }}</div>
-                                <div class="text-[10px] uppercase font-bold text-gray-400 tracking-wide">Dilihat</div>
-                            </div>
-                            <div class="w-px h-8 bg-gray-100"></div>
-                            <div class="text-center">
-                                <div class="font-extrabold text-gray-900 text-lg">{{ likeCount }}</div>
-                                <div class="text-[10px] uppercase font-bold text-gray-400 tracking-wide">Disukai</div>
-                            </div>
-                            <div class="w-px h-8 bg-gray-100"></div>
-                            <div class="text-center">
-                                <div class="font-extrabold text-gray-900 text-lg">{{
-                                    new Date(proyek.terbit_pada).getFullYear() }}</div>
-                                <div class="text-[10px] uppercase font-bold text-gray-400 tracking-wide">Tahun</div>
-                            </div>
-                        </div>
-
-                        <!-- TOMBOL AKSI -->
-                        <div class="flex items-center gap-3">
-                            <button @click="toggleLike"
-                                class="h-12 w-12 rounded-full flex items-center justify-center transition-all duration-300 border-2 flex-shrink-0"
-                                :class="isLiked ? 'bg-red-50 border-red-100 text-red-500 scale-110 shadow-red-100 shadow-lg' : 'bg-gray-50 border-gray-50 text-gray-400 hover:bg-white hover:border-gray-200 hover:shadow-md'"
-                                title="Sukai proyek ini">
-                                <Heart :size="22" :class="{ 'fill-current': isLiked }" />
-                            </button>
-
-                            <button @click="toggleSave"
-                                class="h-12 w-12 rounded-full flex items-center justify-center transition-all duration-300 border-2 flex-shrink-0"
-                                :class="isSaved ? 'bg-indigo-50 border-indigo-100 text-indigo-600 scale-110 shadow-indigo-100 shadow-lg' : 'bg-gray-50 border-gray-50 text-gray-400 hover:bg-white hover:border-gray-200 hover:shadow-md'"
-                                title="Simpan proyek">
-                                <Bookmark :size="22" :class="{ 'fill-current': isSaved }" />
-                            </button>
-
-                            <button @click="shareProyek"
-                                class="h-12 flex-1 rounded-full bg-gray-900 text-white font-bold text-sm flex items-center justify-center gap-2 hover:bg-gray-800 hover:shadow-lg hover:shadow-gray-200 transition-all">
-                                <Share2 :size="18" />
-                                <span>Bagikan</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Pills Teknologi -->
-                    <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-                        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Teknologi</h4>
-                        <div class="flex flex-wrap gap-2">
-                            <div v-for="t in proyek.teknologi" :key="t.id"
-                                class="px-3 py-2 bg-white border border-gray-100 rounded-xl text-xs font-bold text-gray-600 flex items-center gap-2 shadow-sm hover:border-indigo-200 hover:shadow-md transition-all">
-                                <img :src="t.ikon_url" class="w-4 h-4 object-contain"> {{ t.nama }}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Kolaborator -->
-                    <div v-if="proyek.kolaborators && proyek.kolaborators.length > 0"
-                        class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-                        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Tim Kolaborator</h4>
-                        <div class="space-y-4">
-                            <div v-for="k in proyek.kolaborators" :key="k.id" class="flex items-center gap-3">
-                                <img :src="k.user.avatar ? '/storage/' + k.user.avatar : `https://ui-avatars.com/api/?name=${encodeURIComponent(k.user.nama)}&background=random`"
-                                    class="w-10 h-10 rounded-full border border-gray-100 object-cover bg-gray-50">
-                                <div>
-                                    <div class="text-sm font-bold text-gray-900">{{ k.user.nama }}</div>
-                                    <div class="text-xs text-gray-500 capitalize flex items-center gap-1">
-                                        {{ k.peran_kolaborator }}
-                                    </div>
+                        <div class="space-y-3">
+                            <a v-if="proyek.url_demo" :href="proyek.url_demo" target="_blank"
+                                class="flex w-full py-4 px-6 bg-[#E8DEF8] text-[#1D192B] rounded-[20px] font-semibold items-center justify-between hover:shadow-md transition-all group">
+                                <div class="flex items-center gap-3">
+                                    <ExternalLink :size="20" /> Demo Live
                                 </div>
-                            </div>
+                                <ChevronRight :size="20"
+                                    class="opacity-50 group-hover:translate-x-1 transition-transform" />
+                            </a>
+                            <a v-if="proyek.url_repository" :href="proyek.url_repository" target="_blank"
+                                class="flex w-full py-4 px-6 bg-white border border-gray-300 text-gray-800 rounded-[20px] font-semibold items-center justify-between hover:bg-gray-50 transition-all group">
+                                <div class="flex items-center gap-3">
+                                    <Github :size="20" /> Repository
+                                </div>
+                                <ChevronRight :size="20"
+                                    class="opacity-50 group-hover:translate-x-1 transition-transform" />
+                            </a>
                         </div>
-                    </div>
 
-                    <!-- Tautan Demo & Repo -->
-                    <div class="space-y-3">
-                        <a v-if="proyek.url_demo" :href="proyek.url_demo" target="_blank"
-                            class="block w-full py-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-2xl font-bold text-center shadow-lg shadow-indigo-200 hover:shadow-xl hover:translate-y-[-2px] transition-all">
-                            <div class="flex items-center justify-center gap-2">
-                                <ExternalLink :size="20" /> Demo Langsung
-                            </div>
-                        </a>
-                        <a v-if="proyek.url_repository" :href="proyek.url_repository" target="_blank"
-                            class="block w-full py-4 bg-white border-2 border-gray-100 text-gray-800 rounded-2xl font-bold text-center hover:border-gray-900 hover:text-gray-900 hover:shadow-md transition-all">
-                            <div class="flex items-center justify-center gap-2">
-                                <Github :size="20" /> Repositori
-                            </div>
-                        </a>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Modal Konfirmasi Hapus -->
         <Teleport to="body">
             <Transition name="fade">
-                <div v-if="deleteModalOpen" class="fixed inset-0 z-50 overflow-y-auto">
-                    <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity backdrop-blur-sm"
-                        @click="cancelDelete">
+                <div v-if="deleteModalOpen"
+                    class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+                    <div class="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity" @click="cancelDelete">
                     </div>
-                    <div class="flex min-h-full items-center justify-center p-4">
-                        <div
-                            class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all">
+                    <div
+                        class="relative bg-white rounded-[28px] shadow-xl max-w-sm w-full p-6 transform transition-all">
+                        <div class="text-center">
                             <div
-                                class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-                                <Trash2 class="h-6 w-6 text-red-600" />
+                                class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4 text-red-600">
+                                <Trash2 :size="24" />
                             </div>
-                            <div class="text-center">
-                                <h3 class="text-lg font-semibold text-gray-900 mb-2">
-                                    Hapus Komentar
-                                </h3>
-                                <p class="text-sm text-gray-500 mb-6">
-                                    Apakah Anda yakin ingin menghapus komentar ini? Tindakan ini tidak dapat
-                                    dibatalkan.
-                                </p>
-                            </div>
-                            <div class="flex gap-3">
-                                <button @click="cancelDelete" type="button"
-                                    class="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium text-sm transition-colors">
-                                    Batal
-                                </button>
-                                <button @click="confirmDelete" type="button"
-                                    class="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm transition-colors">
-                                    Hapus
-                                </button>
-                            </div>
+                            <h3 class="text-lg font-normal text-[#1d1b20] mb-2">Hapus Komentar?</h3>
+                            <p class="text-sm text-gray-500 mb-6">Tindakan ini permanen dan tidak bisa dibatalkan.</p>
+                        </div>
+                        <div class="flex gap-3">
+                            <button @click="cancelDelete"
+                                class="flex-1 py-2.5 rounded-full text-indigo-600 font-medium hover:bg-indigo-50 transition-colors">Batal</button>
+                            <button @click="confirmDelete"
+                                class="flex-1 py-2.5 bg-red-600 text-white rounded-full font-medium hover:shadow-lg transition-all">Hapus</button>
                         </div>
                     </div>
                 </div>
@@ -986,15 +776,5 @@ const toggleReplies = (komentarId) => {
 .fade-enter-from,
 .fade-leave-to {
     opacity: 0;
-}
-
-/* Penyesuaian tipografi */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-    letter-spacing: -0.025em;
 }
 </style>

@@ -21,7 +21,7 @@ import Dropdown from '@/Components/Dropdown.vue';
 
 const {
     Search, Plus, Edit2, Trash2, Download, RefreshCw,
-    ChevronDown, FileText, Sheet, GraduationCap, BookOpen, Library
+    ChevronDown, FileText, Sheet, GraduationCap, BookOpen, Library, X
 } = LucideIcons;
 
 const props = defineProps({
@@ -52,10 +52,8 @@ const form = useForm({
 });
 
 // --- TABS CONFIG (FAKULTAS) ---
-// Kita mapping nama fakultas panjang ke label pendek biar muat di tab
 const tabs = computed(() => [
     { id: 'semua', label: 'Semua', icon: Library },
-    // { id: 'Fakultas Agama Islam', label: 'Agama Islam', icon: BookOpen },
     { id: 'Fakultas Ilmu Pendidikan', label: 'Ilmu Pendidikan', icon: GraduationCap },
     { id: 'Fakultas Sains dan Teknologi', label: 'Sains dan Teknologi', icon: LucideIcons.Cpu },
 ]);
@@ -159,85 +157,74 @@ const closeModal = () => { showModal.value = false; form.reset(); };
 
     <AuthenticatedLayout>
         <div class="space-y-6">
-            <Breadcrumb :items="[{ label: 'Program Studi' }]" />
-
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h2 class="text-2xl font-bold text-gray-800">Program Studi</h2>
-                    <p class="text-sm text-gray-500 mt-1">Kelola data Program Studi dan Fakultas.</p>
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="space-y-1">
+                    <Breadcrumb :items="[{ label: 'Program Studi' }]" />
+                    <h2 class="text-[28px] leading-9 font-normal text-slate-900">Program Studi</h2>
                 </div>
-                <div class="flex gap-2">
-                    <Transition enter-active-class="transition ease-out duration-200"
-                        enter-from-class="opacity-0 scale-95" enter-to-class="opacity-100 scale-100"
-                        leave-active-class="transition ease-in duration-75" leave-from-class="opacity-100 scale-100"
-                        leave-to-class="opacity-0 scale-95">
-                        <DangerButton v-if="selectedIds.length > 0" @click="confirmBulkDelete"
-                            class="flex items-center gap-2">
-                            <Trash2 :size="16" /> Hapus ({{ selectedIds.length }})
-                        </DangerButton>
+                
+                <div class="flex items-center gap-3">
+                     <Transition enter-active-class="transition ease-out duration-200" enter-from-class="opacity-0 scale-95" enter-to-class="opacity-100 scale-100" leave-active-class="transition ease-in duration-75" leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95">
+                        <button v-if="selectedIds.length > 0" @click="confirmBulkDelete" class="flex items-center gap-2 px-4 py-2.5 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded-full text-sm font-medium transition-colors">
+                            <Trash2 :size="18" />
+                            <span>Hapus ({{ selectedIds.length }})</span>
+                        </button>
                     </Transition>
-                    <PrimaryButton @click="openCreateModal" class="flex items-center gap-2 shadow-sm">
-                        <Plus :size="16" /> Tambah Prodi
-                    </PrimaryButton>
-                </div>
-            </div>
-
-            <div>
-                <div class="bg-gray-100 rounded-lg p-1.5 inline-flex gap-1 overflow-x-auto max-w-full">
-                    <button v-for="tab in tabs" :key="tab.id" @click="switchTab(tab.id)"
-                        class="group inline-flex items-center justify-center px-4 py-2.5 rounded-md font-medium text-sm transition-all duration-200 whitespace-nowrap"
-                        :class="activeFakultas === tab.id
-                            ? 'bg-white text-gray-900 shadow-sm'
-                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'">
-                        <component :is="tab.icon" class="mr-2 h-4 w-4"
-                            :class="activeFakultas === tab.id ? 'text-indigo-600' : 'text-gray-500 group-hover:text-gray-700'" />
-                        {{ tab.label }}
+                    <button @click="openCreateModal" class="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-medium transition-all shadow-sm hover:shadow-md">
+                        <Plus :size="20" />
+                        <span>Tambah Prodi</span>
                     </button>
                 </div>
             </div>
 
-            <div
-                class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+            <div class="border-b border-slate-200">
+                <nav class="-mb-px flex space-x-6 overflow-x-auto" aria-label="Tabs">
+                    <button v-for="tab in tabs" :key="tab.id" @click="switchTab(tab.id)"
+                        class="group inline-flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-all duration-200 whitespace-nowrap"
+                        :class="activeFakultas === tab.id
+                            ? 'border-indigo-600 text-indigo-600'
+                            : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'">
+                        <component :is="tab.icon" :size="18" />
+                        {{ tab.label }}
+                    </button>
+                </nav>
+            </div>
 
-                <div
-                    class="p-4 border-b border-gray-200 bg-gray-50/50 flex flex-col sm:flex-row gap-4 justify-between items-center">
+            <div class="bg-white rounded-[28px] border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+
+                <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row gap-4 justify-between items-center bg-white">
                     <div class="flex items-center gap-3 w-full sm:w-auto">
-                        <div class="relative w-full sm:w-64">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Search :size="16" class="text-gray-400" />
+                        <div class="relative w-full sm:w-80 group">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <Search :size="18" class="text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
                             </div>
-                            <TextInput v-model="search" type="text" placeholder="Cari nama prodi atau kode..."
-                                class="pl-9 pr-8 block w-full text-sm rounded-lg" />
+                            <input v-model="search" type="text" placeholder="Cari nama prodi atau kode..."
+                                class="pl-11 pr-10 block w-full py-2.5 bg-slate-100 border-none rounded-full text-sm focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-500" />
                             <button v-if="search" @click="search = ''"
-                                class="absolute inset-y-0 right-2 flex items-center text-gray-400 hover:text-gray-600 cursor-pointer">
-                                <X :size="14" class="bg-gray-200 rounded-full p-0.5 w-5 h-5" />
+                                class="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer">
+                                <X :size="16" class="bg-slate-200 rounded-full p-0.5" />
                             </button>
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
-                        <button @click="handleRefresh"
-                            class="p-2.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100">
-                            <RefreshCw :size="18" />
+                    <div class="flex items-center gap-2">
+                        <button @click="handleRefresh" class="p-2.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors">
+                            <RefreshCw :size="20" />
                         </button>
-                        <div class="h-6 w-px bg-gray-300 mx-1"></div>
+                        <div class="h-8 w-px bg-slate-200 mx-1"></div>
                         <Dropdown align="right" width="48">
                             <template #trigger>
-                                <button
-                                    class="flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
+                                <button class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-full hover:bg-slate-50 transition-colors">
                                     <Download :size="16" /> Export
-                                    <ChevronDown :size="14" class="text-gray-400" />
                                 </button>
                             </template>
                             <template #content>
-                                <div class="py-1">
-                                    <button @click="exportData('csv')"
-                                        class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                        <FileText :size="16" class="text-green-600" /> CSV
+                                <div class="p-1">
+                                    <button @click="exportData('csv')" class="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-md">
+                                        <FileText :size="16" class="text-emerald-600" /> CSV
                                     </button>
-                                    <button @click="exportData('excel')"
-                                        class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                        <Sheet :size="16" class="text-green-600" /> Excel
+                                    <button @click="exportData('excel')" class="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-md">
+                                        <Sheet :size="16" class="text-emerald-600" /> Excel
                                     </button>
                                 </div>
                             </template>
@@ -245,75 +232,63 @@ const closeModal = () => { showModal.value = false; form.reset(); };
                     </div>
                 </div>
 
-                <div class="overflow-x-auto flex-1">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                         <thead class="bg-slate-50/50">
                             <tr>
-                                <th scope="col" class="px-6 py-3 text-left w-10"><input type="checkbox"
-                                        v-model="selectAll"
-                                        class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500 cursor-pointer">
+                                <th scope="col" class="pl-6 pr-3 py-4 text-left w-10">
+                                    <input type="checkbox" v-model="selectAll" class="rounded-[4px] border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500/50 cursor-pointer w-4 h-4">
                                 </th>
-                                <th
-                                    class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                    Kode</th>
-                                <th
-                                    class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                    Nama
-                                    Program Studi</th>
-                                <th
-                                    class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                    Fakultas
-                                </th>
-                                <th
-                                    class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                    Aksi</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Kode</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Program Studi</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Fakultas</th>
+                                <th class="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
+                        <tbody class="divide-y divide-slate-100">
                             <tr v-for="prodi in prodis.data" :key="prodi.id"
-                                class="hover:bg-indigo-50/30 transition-colors group">
-                                <td class="px-6 py-4 whitespace-nowrap align-middle"><input type="checkbox"
-                                        :value="prodi.id" v-model="selectedIds"
-                                        class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500 cursor-pointer">
+                                class="hover:bg-slate-50 transition-colors group">
+                                <td class="pl-6 pr-3 py-4 align-middle">
+                                    <input type="checkbox" :value="prodi.id" v-model="selectedIds" class="rounded-[4px] border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500/50 cursor-pointer w-4 h-4">
                                 </td>
 
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <span
-                                        class="px-2.5 py-1 text-xs font-mono font-bold bg-gray-100 border border-gray-300 rounded text-gray-700">{{
-                                        prodi.kode }}</span>
+                                    <span class="px-2.5 py-1 text-xs font-mono font-bold bg-slate-100 border border-slate-200 rounded-md text-slate-700">
+                                        {{ prodi.kode }}
+                                    </span>
                                 </td>
 
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-bold text-gray-900">{{ prodi.nama }}</div>
+                                    <div class="text-base font-semibold text-slate-900">{{ prodi.nama }}</div>
                                 </td>
 
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="text-sm text-gray-600">{{ prodi.fakultas }}</span>
+                                    <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-100 text-xs font-medium">
+                                        <Library :size="12" />
+                                        {{ prodi.fakultas }}
+                                    </div>
                                 </td>
 
-                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <td class="px-6 py-4 whitespace-nowrap text-right">
                                     <div class="flex justify-end gap-2">
                                         <button @click="openEditModal(prodi)"
-                                            class="p-2 text-indigo-600 bg-white hover:bg-indigo-50 border border-gray-200 rounded-lg transition-all shadow-sm">
-                                            <Edit2 :size="16" />
+                                            class="w-9 h-9 flex items-center justify-center text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-full transition-colors">
+                                            <Edit2 :size="18" />
                                         </button>
                                         <button @click="confirmDelete(prodi.id)"
-                                            class="p-2 text-red-600 bg-white hover:bg-red-50 border border-gray-200 rounded-lg transition-all shadow-sm">
-                                            <Trash2 :size="16" />
+                                            class="w-9 h-9 flex items-center justify-center text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-full transition-colors">
+                                            <Trash2 :size="18" />
                                         </button>
                                     </div>
                                 </td>
                             </tr>
                             <tr v-if="prodis.data.length === 0">
-                                <td colspan="5" class="px-6 py-24 text-center text-gray-500 bg-gray-50/30">
+                                <td colspan="5" class="px-6 py-24 text-center">
                                     <div class="flex flex-col items-center justify-center">
-                                        <div class="bg-gray-100 p-4 rounded-full mb-3">
-                                            <GraduationCap :size="32" class="text-gray-300" />
+                                        <div class="bg-slate-50 p-6 rounded-full mb-4">
+                                            <GraduationCap :size="48" class="text-slate-300" />
                                         </div>
-                                        <p class="text-base font-medium text-gray-900">Belum ada data Program Studi</p>
-                                        <p v-if="activeFakultas !== 'semua'" class="text-sm text-gray-500 mt-1">di {{
-                                            activeFakultas }}
-                                        </p>
+                                        <h3 class="text-lg font-medium text-slate-900">Belum ada data Program Studi</h3>
                                     </div>
                                 </td>
                             </tr>
@@ -321,18 +296,19 @@ const closeModal = () => { showModal.value = false; form.reset(); };
                     </table>
                 </div>
 
-                <div
-                    class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row items-center justify-between gap-4 mt-auto">
-                    <div class="text-sm text-gray-500">Menampilkan {{ prodis.from || 0 }} - {{ prodis.to || 0 }} dari {{
-                        prodis.total }}
-                        data</div>
+                <div class="px-6 py-5 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 mt-auto">
+                    <div class="text-sm text-slate-500">
+                        Menampilkan <span class="font-bold text-slate-700">{{ prodis.from || 0 }}</span> - <span class="font-bold text-slate-700">{{ prodis.to || 0 }}</span> dari <span class="font-bold text-slate-700">{{ prodis.total }}</span> data
+                    </div>
                     <div class="flex items-center gap-4">
-                        <select v-model="perPage"
-                            class="text-xs border-gray-300 rounded-lg focus:ring-indigo-500 py-1.5 pl-2 pr-7 cursor-pointer">
-                            <option :value="10">10 / hal</option>
-                            <option :value="25">25 / hal</option>
-                            <option :value="50">50 / hal</option>
-                        </select>
+                         <div class="relative">
+                            <select v-model="perPage" class="appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 pr-8 cursor-pointer">
+                                <option :value="10">10 / hal</option>
+                                <option :value="25">25 / hal</option>
+                                <option :value="50">50 / hal</option>
+                            </select>
+                            <ChevronDown :size="14" class="absolute right-3 top-3.5 text-slate-500 pointer-events-none" />
+                        </div>
                         <Pagination :links="prodis.links" />
                     </div>
                 </div>
@@ -340,49 +316,45 @@ const closeModal = () => { showModal.value = false; form.reset(); };
         </div>
 
         <Modal :show="showModal" @close="closeModal">
-            <div class="p-6">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-lg font-bold text-gray-900">{{ isEditing ? 'Edit Program Studi' : 'Tambah Program Studi' }}</h2>
-                    <button @click="closeModal" class="text-gray-400 hover:text-gray-600">
-                        <X :size="24" />
-                    </button>
+            <div class="p-8">
+                <div class="flex items-center justify-between mb-8">
+                    <h2 class="text-2xl font-normal text-slate-900">{{ isEditing ? 'Edit Program Studi' : 'Tambah Program Studi' }}</h2>
+                    <button @click="closeModal" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600"><X :size="24"/></button>
                 </div>
 
-                <div class="space-y-4">
+                <div class="space-y-6">
                     <div>
-                        <InputLabel for="fakultas" value="Fakultas" />
+                        <InputLabel for="fakultas" value="Fakultas" class="mb-2" />
                         <select id="fakultas" v-model="form.fakultas"
-                            class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-lg shadow-sm">
+                            class="block w-full rounded-xl bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-500 focus:ring-indigo-500 py-3 px-4 text-sm">
                             <option value="" disabled>Pilih Fakultas...</option>
-                            <option v-for="fak in listFakultas.filter(f => f !== 'Fakultas Agama Islam')" :key="fak"
-                                :value="fak">
+                            <option v-for="fak in listFakultas.filter(f => f !== 'Fakultas Agama Islam')" :key="fak" :value="fak">
                                 {{ fak }}
                             </option>
-
                         </select>
                         <InputError :message="form.errors.fakultas" class="mt-2" />
                     </div>
 
-                    <div class="grid grid-cols-3 gap-4">
+                    <div class="grid grid-cols-3 gap-6">
                         <div class="col-span-2">
-                            <InputLabel for="nama" value="Nama Program Studi" />
-                            <TextInput id="nama" v-model="form.nama" type="text" class="mt-1 block w-full"
-                                placeholder="Contoh: Informatika" />
+                            <InputLabel for="nama" value="Nama Program Studi" class="mb-2" />
+                            <TextInput id="nama" v-model="form.nama" type="text" class="block w-full rounded-xl bg-slate-50 border-slate-200 focus:bg-white" placeholder="Contoh: Informatika" />
                             <InputError :message="form.errors.nama" class="mt-2" />
                         </div>
                         <div>
-                            <InputLabel for="kode" value="Kode (Singkatan)" />
+                            <InputLabel for="kode" value="Kode (Singkatan)" class="mb-2" />
                             <TextInput id="kode" v-model="form.kode" type="text"
-                                class="mt-1 block w-full uppercase font-mono" placeholder="INF" maxlength="10" />
+                                class="block w-full rounded-xl bg-slate-50 border-slate-200 focus:bg-white uppercase font-mono" placeholder="INF" maxlength="10" />
                             <InputError :message="form.errors.kode" class="mt-2" />
                         </div>
                     </div>
                 </div>
 
-                <div class="mt-8 flex justify-end gap-3 pt-6 border-t border-gray-100">
-                    <SecondaryButton @click="closeModal"> Batal </SecondaryButton>
-                    <PrimaryButton @click="submitForm" :disabled="form.processing" class="shadow-md px-6">{{ isEditing ?
-                        'Simpan' : 'Tambah' }}</PrimaryButton>
+                <div class="mt-10 flex justify-end gap-3">
+                    <button @click="closeModal" class="px-6 py-2.5 rounded-full text-slate-700 font-medium hover:bg-slate-100 transition-colors">Batal</button>
+                    <button @click="submitForm" :disabled="form.processing" class="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-medium shadow-md hover:shadow-lg transition-all transform active:scale-95">
+                        {{ isEditing ? 'Simpan' : 'Tambah' }}
+                    </button>
                 </div>
             </div>
         </Modal>
