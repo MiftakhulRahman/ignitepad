@@ -50,6 +50,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/proyek/{id}/update', [App\Http\Controllers\ProyekController::class, 'update'])->name('proyek.update');
         Route::delete('/proyek/{id}', [App\Http\Controllers\ProyekController::class, 'destroy'])->name('proyek.destroy');
         
+        // Dashboard Preview (No View Increment)
+        Route::get('/dashboard/proyek/{slug}', [App\Http\Controllers\ProyekController::class, 'dashboardShow'])->name('proyek.dashboard.show');
+        
+        // Collaborator Search API
+        Route::get('/api/proyek/search-users', [App\Http\Controllers\ProyekController::class, 'searchUsers'])->name('proyek.search-users');
+        
+        // Collaborator Management
+        Route::post('/proyek/{proyek}/kolaborator', [App\Http\Controllers\KolaboratorController::class, 'store'])->name('proyek.kolaborator.store');
+        Route::delete('/proyek/{proyek}/kolaborator/{kolaborator}', [App\Http\Controllers\KolaboratorController::class, 'destroy'])->name('proyek.kolaborator.destroy');
+        
         // Interaksi (Like/Save)
         // Interaksi (Like/Save)
         Route::post('/proyek/{id}/suka', [App\Http\Controllers\InteraksiController::class, 'toggleLike'])->name('proyek.like');

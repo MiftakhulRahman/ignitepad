@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import {
     Layout, Image, Cpu, Settings, CheckCircle2,
     ChevronRight, ChevronLeft, Save, AlertCircle
@@ -13,6 +13,7 @@ import TextInput from '@/Components/TextInput.vue';
 import InputError from '@/Components/InputError.vue';
 import RichTextEditor from '@/Components/RichTextEditor.vue';
 import ImageUpload from '@/Components/ImageUpload.vue';
+import CollaboratorInput from '@/Components/Proyek/CollaboratorInput.vue';
 
 const props = defineProps({
     kategoris: Array,
@@ -38,6 +39,7 @@ const form = useForm({
     thumbnail: null,
     galeri: [],
     teknologi_ids: [],
+    kolaborators: [],
     url_demo: '',
     url_repository: '',
     status: 'draft', // draft | terbit
@@ -147,6 +149,7 @@ const selectTeknologi = (id) => {
 
                     <div class="p-6 sm:p-8 min-h-[400px]">
 
+                        <!-- STEP 1: Informasi Dasar -->
                         <div v-show="currentStep === 1" class="space-y-6 animate-fade-in">
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div class="md:col-span-2 space-y-4">
@@ -186,10 +189,11 @@ const selectTeknologi = (id) => {
                             </div>
                         </div>
 
+                        <!-- STEP 2: Konten Visual -->
                         <div v-show="currentStep === 2" class="space-y-8 animate-fade-in">
                             <div>
                                 <InputLabel value="Thumbnail Utama" class="mb-2" />
-                                <ImageUpload v-model="form.thumbnail" previewSize="h-64" />
+                                <ImageUpload v-model="form.thumbnail" :aspect-ratio="16 / 9" previewSize="h-64" />
                                 <InputError :message="form.errors.thumbnail" class="mt-2" />
                             </div>
 
@@ -202,13 +206,14 @@ const selectTeknologi = (id) => {
 
                             <div>
                                 <InputLabel value="Galeri Tambahan (Opsional)" class="mb-2" />
-                                <ImageUpload v-model="form.galeri" multiple />
+                                <ImageUpload v-model="form.galeri" multiple :max-files="2" />
                                 <p class="text-xs text-gray-500 mt-1">Upload screenshot aplikasi atau diagram sistem
-                                    (Max 5 gambar).</p>
+                                    (Max 2 gambar total).</p>
                                 <InputError :message="form.errors.galeri" class="mt-2" />
                             </div>
                         </div>
 
+                        <!-- STEP 3: Teknologi & Link -->
                         <div v-show="currentStep === 3" class="space-y-8 animate-fade-in">
                             <div>
                                 <InputLabel value="Teknologi & Tools yang Digunakan" class="mb-3" />
@@ -239,6 +244,7 @@ const selectTeknologi = (id) => {
                             </div>
                         </div>
 
+                        <!-- STEP 4: Pengaturan & Publikasi -->
                         <div v-show="currentStep === 4" class="space-y-8 animate-fade-in">
                             <div class="bg-indigo-50 border border-indigo-100 rounded-lg p-4 flex gap-3 items-start">
                                 <AlertCircle class="text-indigo-600 shrink-0 mt-0.5" :size="20" />
@@ -247,6 +253,11 @@ const selectTeknologi = (id) => {
                                     <p class="text-indigo-700 text-sm mt-1">Pastikan semua data sudah benar sebelum
                                         mempublikasikan proyek ini.</p>
                                 </div>
+                            </div>
+
+                            <!-- Collaborator Section -->
+                            <div class="border-b border-gray-200 pb-8">
+                                <CollaboratorInput v-model="form.kolaborators" />
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">

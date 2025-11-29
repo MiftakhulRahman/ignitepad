@@ -55,6 +55,12 @@ class Proyek extends Model
         return $this->hasMany(Kolaborator::class);
     }
 
+    // Alias plural untuk konsistensi
+    public function kolaborators(): HasMany
+    {
+        return $this->hasMany(Kolaborator::class);
+    }
+
     public function komentar(): HasMany
     {
         return $this->hasMany(Komentar::class);

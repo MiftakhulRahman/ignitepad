@@ -33,6 +33,7 @@ import {
 const props = defineProps({
     proyek: Object,
     isOwner: Boolean,
+    isAdmin: Boolean,
     hasLiked: Boolean,
     hasSaved: Boolean,
     komentars: Array,
@@ -41,13 +42,8 @@ const props = defineProps({
 const page = usePage();
 const user = computed(() => page.props.auth.user);
 
-// Cek apakah admin
-const isAdmin = computed(
-    () => user.value && user.value.perans.some((r) => r.slug === 'superadmin'),
-);
-
 // Mode manajemen = pemilik atau admin
-const isManagementMode = computed(() => props.isOwner || isAdmin.value);
+const isManagementMode = computed(() => props.isOwner || props.isAdmin);
 
 // Hitung total komentar (Induk + Balasan)
 const totalKomentarCount = computed(() => {
@@ -404,6 +400,7 @@ const toggleReplies = (komentarId) => {
 </script>
 
 <template>
+
     <Head :title="proyek.judul" />
 
     <PublicLayout>
@@ -486,7 +483,8 @@ const toggleReplies = (komentarId) => {
                                 <MessageSquare :size="24" class="text-indigo-600" />
                                 Diskusi
                             </h3>
-                            <span class="bg-gray-50 text-gray-600 px-4 py-1.5 rounded-full text-xs font-bold border border-gray-100">
+                            <span
+                                class="bg-gray-50 text-gray-600 px-4 py-1.5 rounded-full text-xs font-bold border border-gray-100">
                                 {{ totalKomentarCount }} Komentar
                             </span>
                         </div>
@@ -508,12 +506,13 @@ const toggleReplies = (komentarId) => {
                                         <textarea v-model="commentForm.isi" rows="3"
                                             class="w-full rounded-2xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-500 focus:ring-0 text-sm p-4 pr-4 transition-all resize-none placeholder:text-gray-400"
                                             placeholder="Tambahkan komentar..."></textarea>
-                                        
+
                                         <!-- Tombol Kirim Professional -->
                                         <div class="flex justify-end mt-2">
-                                             <button @click="submitComment" :disabled="!commentForm.isi"
+                                            <button @click="submitComment" :disabled="!commentForm.isi"
                                                 class="inline-flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-full text-sm font-bold hover:bg-indigo-700 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:shadow-none transform active:scale-95">
-                                                Kirim <Send :size="14" />
+                                                Kirim
+                                                <Send :size="14" />
                                             </button>
                                         </div>
                                     </div>
@@ -552,8 +551,10 @@ const toggleReplies = (komentarId) => {
                                                     <h4 class="text-sm font-bold text-gray-900">{{ k.user.nama }}</h4>
                                                     <span v-if="k.user_id === proyek.user_id"
                                                         class="bg-indigo-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wide">PEMBUAT</span>
-                                                    <span class="text-xs text-gray-400">{{ relativeTime(k.created_at) }}</span>
-                                                    <span v-if="isEdited(k)" class="text-xs text-gray-400 italic">· (diedit)</span>
+                                                    <span class="text-xs text-gray-400">{{ relativeTime(k.created_at)
+                                                        }}</span>
+                                                    <span v-if="isEdited(k)" class="text-xs text-gray-400 italic">·
+                                                        (diedit)</span>
                                                 </div>
                                             </div>
 
@@ -595,7 +596,8 @@ const toggleReplies = (komentarId) => {
                                             <button @click="toggleLikeComment(k)"
                                                 class="flex items-center gap-1.5 text-xs font-bold transition-colors group/btn"
                                                 :class="k.is_liked ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'">
-                                                <ThumbsUp :size="16" :class="{ 'fill-current': k.is_liked }" class="transition-transform group-active/btn:scale-90" />
+                                                <ThumbsUp :size="16" :class="{ 'fill-current': k.is_liked }"
+                                                    class="transition-transform group-active/btn:scale-90" />
                                                 <span v-if="k.jumlah_suka > 0">{{ k.jumlah_suka }}</span>
                                             </button>
 
@@ -603,7 +605,8 @@ const toggleReplies = (komentarId) => {
                                             <button @click="toggleDislikeComment(k)"
                                                 class="flex items-center gap-1.5 text-xs font-bold transition-colors group/btn"
                                                 :class="k.is_disliked ? 'text-red-500' : 'text-gray-400 hover:text-gray-600'">
-                                                <ThumbsDown :size="16" :class="{ 'fill-current': k.is_disliked }" class="transition-transform group-active/btn:scale-90" />
+                                                <ThumbsDown :size="16" :class="{ 'fill-current': k.is_disliked }"
+                                                    class="transition-transform group-active/btn:scale-90" />
                                                 <span v-if="k.jumlah_dislikes > 0">{{ k.jumlah_dislikes }}</span>
                                             </button>
 
@@ -615,8 +618,9 @@ const toggleReplies = (komentarId) => {
                                             </button>
 
                                             <!-- Tombol Toggle Balasan (Style sama dengan Balas) -->
-                                            <button v-if="k.balasan && k.balasan.length > 0" @click="toggleReplies(k.id)"
-                                                 class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 transition-colors py-1 px-2 rounded-md hover:bg-indigo-50">
+                                            <button v-if="k.balasan && k.balasan.length > 0"
+                                                @click="toggleReplies(k.id)"
+                                                class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 transition-colors py-1 px-2 rounded-md hover:bg-indigo-50">
                                                 <template v-if="hiddenReplies.has(k.id)">
                                                     <ChevronDown :size="16" />
                                                     Lihat {{ k.balasan.length }} balasan
@@ -629,26 +633,29 @@ const toggleReplies = (komentarId) => {
                                         </div>
 
                                         <!-- CONTAINER BALASAN (TREE VISUAL) -->
-                                        <div v-if="k.balasan && k.balasan.length > 0 && !hiddenReplies.has(k.id)" class="mt-2 relative">
+                                        <div v-if="k.balasan && k.balasan.length > 0 && !hiddenReplies.has(k.id)"
+                                            class="mt-2 relative">
                                             <!-- Garis Vertikal Induk (Menghubungkan Avatar Utama ke Bawah) -->
                                             <!-- Offset left harus pas ditengah avatar utama (w-10 -> center 1.25rem / 20px) -->
                                             <!-- Kita geser container balasan ke kanan agar avatar balasan sejajar dengan garis -->
-                                            
+
                                             <div class="pt-2 pb-2"> <!-- Spacer -->
-                                                <div v-for="(b, index) in k.balasan" :key="b.id" class="relative pl-12 mb-4 last:mb-0">
+                                                <div v-for="(b, index) in k.balasan" :key="b.id"
+                                                    class="relative pl-12 mb-4 last:mb-0">
                                                     <!-- VISUAL ROUTECAUSE / LINE THREAD (CURVED) -->
                                                     <!-- Garis Vertikal dari atas sampai belokan -->
                                                     <!-- Posisi absolute relative terhadap parent comment avatar center (-left 44px approx dari pl-12) -->
                                                     <!-- Kita gunakan pseudo-element atau div absolute di dalam loop -->
-                                                    
+
                                                     <!-- Garis Melengkung (L Shape) -->
-                                                    <div class="absolute left-[20px] top-[-10px] bottom-auto w-8 h-[40px] border-b-2 border-l-2 border-gray-200 rounded-bl-2xl pointer-events-none">
+                                                    <div
+                                                        class="absolute left-[20px] top-[-10px] bottom-auto w-8 h-[40px] border-b-2 border-l-2 border-gray-200 rounded-bl-2xl pointer-events-none">
                                                         <!-- Top adjustment depends on spacing. height adjustment connects to avatar center -->
                                                     </div>
-                                                    
+
                                                     <!-- Jika bukan item terakhir, lanjutkan garis vertikal ke bawah -->
-                                                    <div v-if="index !== k.balasan.length - 1" 
-                                                         class="absolute left-[20px] top-[30px] bottom-[-20px] w-0.5 bg-gray-200 pointer-events-none">
+                                                    <div v-if="index !== k.balasan.length - 1"
+                                                        class="absolute left-[20px] top-[30px] bottom-[-20px] w-0.5 bg-gray-200 pointer-events-none">
                                                     </div>
 
                                                     <!-- Item Balasan -->
@@ -662,16 +669,19 @@ const toggleReplies = (komentarId) => {
                                                             <div class="flex items-start justify-between gap-2 mb-1">
                                                                 <div class="flex-1">
                                                                     <div class="flex items-center gap-2 flex-wrap">
-                                                                        <span class="font-bold text-sm text-gray-900">{{ b.user.nama }}</span>
+                                                                        <span class="font-bold text-sm text-gray-900">{{
+                                                                            b.user.nama }}</span>
                                                                         <span v-if="b.user_id === proyek.user_id"
                                                                             class="bg-indigo-100 text-indigo-700 text-[10px] px-2 py-0.5 rounded-full font-bold">PEMBUAT</span>
-                                                                        <span class="text-xs text-gray-400">{{ relativeTime(b.created_at) }}</span>
+                                                                        <span class="text-xs text-gray-400">{{
+                                                                            relativeTime(b.created_at) }}</span>
                                                                     </div>
                                                                 </div>
                                                                 <!-- Aksi Edit/Hapus Balasan -->
                                                                 <div v-if="user && (user.id === b.user_id || isAdmin)"
                                                                     class="flex gap-1 opacity-0 group-hover/reply:opacity-100 transition-opacity">
-                                                                    <button v-if="user.id === b.user_id" @click="startEditReply(b)"
+                                                                    <button v-if="user.id === b.user_id"
+                                                                        @click="startEditReply(b)"
                                                                         class="p-1 text-gray-400 hover:text-indigo-600 rounded-md hover:bg-indigo-50">
                                                                         <Edit :size="14" />
                                                                     </button>
@@ -686,19 +696,21 @@ const toggleReplies = (komentarId) => {
                                                             <div v-if="editingReplyId !== b.id">
                                                                 <div class="text-gray-700 text-sm leading-relaxed mb-2 prose prose-sm max-w-none"
                                                                     v-html="b.isi_html || b.isi"></div>
-                                                                
+
                                                                 <!-- Aksi Balasan (Like/Dislike) -->
                                                                 <div class="flex gap-4">
                                                                     <button @click="toggleLikeComment(b)"
                                                                         class="flex items-center gap-1 text-xs font-bold transition-colors"
                                                                         :class="b.is_liked ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'">
-                                                                        <ThumbsUp :size="14" :class="{ 'fill-current': b.is_liked }" />
+                                                                        <ThumbsUp :size="14"
+                                                                            :class="{ 'fill-current': b.is_liked }" />
                                                                         {{ b.jumlah_suka || '' }}
                                                                     </button>
                                                                     <button @click="toggleDislikeComment(b)"
                                                                         class="flex items-center gap-1 text-xs font-bold transition-colors"
                                                                         :class="b.is_disliked ? 'text-red-500' : 'text-gray-400 hover:text-gray-600'">
-                                                                        <ThumbsDown :size="14" :class="{ 'fill-current': b.is_disliked }" />
+                                                                        <ThumbsDown :size="14"
+                                                                            :class="{ 'fill-current': b.is_disliked }" />
                                                                         {{ b.jumlah_dislikes || '' }}
                                                                     </button>
                                                                 </div>
@@ -723,10 +735,13 @@ const toggleReplies = (komentarId) => {
                                         </div>
 
                                         <!-- FORM BALASAN (DI BAWAH LIST BALASAN) -->
-                                        <div v-if="replyingToId === k.id" class="mt-4 pl-12 relative animate-in fade-in slide-in-from-top-2 duration-200">
-                                             <!-- Garis konektor untuk form -->
-                                             <div class="absolute left-[20px] top-[-10px] w-8 h-[40px] border-b-2 border-l-2 border-gray-200 rounded-bl-2xl pointer-events-none"></div>
-                                             
+                                        <div v-if="replyingToId === k.id"
+                                            class="mt-4 pl-12 relative animate-in fade-in slide-in-from-top-2 duration-200">
+                                            <!-- Garis konektor untuk form -->
+                                            <div
+                                                class="absolute left-[20px] top-[-10px] w-8 h-[40px] border-b-2 border-l-2 border-gray-200 rounded-bl-2xl pointer-events-none">
+                                            </div>
+
                                             <div class="flex gap-3">
                                                 <div
                                                     class="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex-shrink-0 overflow-hidden z-10">
@@ -764,16 +779,15 @@ const toggleReplies = (komentarId) => {
                     <!-- CARD DASHBOARD PEMBUAT / ADMIN (DESAIN BARU CLEAN PROFESSIONAL) -->
                     <div v-if="isManagementMode"
                         class="bg-white rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden relative ring-1 ring-gray-900/5">
-                        
+
                         <!-- Header Clean White -->
                         <div class="p-6 border-b border-gray-100 bg-white">
                             <div class="flex justify-between items-center mb-1">
                                 <h3 class="font-bold text-gray-900 text-base tracking-tight flex items-center gap-2">
-                                    <Settings :size="18" class="text-indigo-600" /> 
+                                    <Settings :size="18" class="text-indigo-600" />
                                     {{ isOwner ? 'Panel Creator' : 'Administrasi' }}
                                 </h3>
-                                <span
-                                    class="px-2.5 py-1 rounded-md text-[10px] font-bold border tracking-wide"
+                                <span class="px-2.5 py-1 rounded-md text-[10px] font-bold border tracking-wide"
                                     :class="proyek.status === 'published' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-gray-50 text-gray-600 border-gray-100'">
                                     {{ proyek.status.toUpperCase() }}
                                 </span>
@@ -784,15 +798,18 @@ const toggleReplies = (komentarId) => {
                         <!-- Konten Card -->
                         <div class="p-6 bg-gray-50/30">
                             <div class="grid grid-cols-3 gap-3 mb-6">
-                                <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
+                                <div
+                                    class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
                                     <div class="text-xs text-gray-400 font-medium mb-1">Views</div>
                                     <div class="text-lg font-extrabold text-gray-900">{{ proyek.jumlah_lihat }}</div>
                                 </div>
-                                <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
+                                <div
+                                    class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
                                     <div class="text-xs text-gray-400 font-medium mb-1">Likes</div>
                                     <div class="text-lg font-extrabold text-gray-900">{{ likeCount }}</div>
                                 </div>
-                                <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
+                                <div
+                                    class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
                                     <div class="text-xs text-gray-400 font-medium mb-1">Saves</div>
                                     <div class="text-lg font-extrabold text-gray-900">{{ proyek.jumlah_simpan }}</div>
                                 </div>
@@ -814,12 +831,17 @@ const toggleReplies = (komentarId) => {
                     <!-- CARD STATISTIK PUBLIK -->
                     <div v-else class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
                         <div class="flex justify-between items-center mb-6">
-                            <div class="flex items-center gap-2">
-                                <img :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(proyek.user.nama)}&background=random`"
-                                    class="w-10 h-10 rounded-full border-2 border-white shadow-sm object-cover">
+                            <div class="flex items-center gap-3">
+                                <img :src="proyek.user.avatar ? '/storage/' + proyek.user.avatar : `https://ui-avatars.com/api/?name=${encodeURIComponent(proyek.user.nama)}&background=random`"
+                                    class="w-12 h-12 rounded-full border-2 border-white shadow-sm object-cover">
                                 <div>
                                     <div class="text-xs text-gray-500 font-medium">Dibuat oleh</div>
                                     <div class="text-sm font-bold text-gray-900">{{ proyek.user.nama }}</div>
+                                    <div class="text-xs text-gray-500">
+                                        {{ proyek.user.prodi?.nama_prodi || 'Mahasiswa' }} <span
+                                            v-if="proyek.user.nim">· {{
+                                                proyek.user.nim }}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -877,6 +899,24 @@ const toggleReplies = (komentarId) => {
                         </div>
                     </div>
 
+                    <!-- Kolaborator -->
+                    <div v-if="proyek.kolaborators && proyek.kolaborators.length > 0"
+                        class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+                        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Tim Kolaborator</h4>
+                        <div class="space-y-4">
+                            <div v-for="k in proyek.kolaborators" :key="k.id" class="flex items-center gap-3">
+                                <img :src="k.user.avatar ? '/storage/' + k.user.avatar : `https://ui-avatars.com/api/?name=${encodeURIComponent(k.user.nama)}&background=random`"
+                                    class="w-10 h-10 rounded-full border border-gray-100 object-cover bg-gray-50">
+                                <div>
+                                    <div class="text-sm font-bold text-gray-900">{{ k.user.nama }}</div>
+                                    <div class="text-xs text-gray-500 capitalize flex items-center gap-1">
+                                        {{ k.peran_kolaborator }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Tautan Demo & Repo -->
                     <div class="space-y-3">
                         <a v-if="proyek.url_demo" :href="proyek.url_demo" target="_blank"
@@ -901,7 +941,8 @@ const toggleReplies = (komentarId) => {
             <Transition name="fade">
                 <div v-if="deleteModalOpen" class="fixed inset-0 z-50 overflow-y-auto">
                     <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity backdrop-blur-sm"
-                        @click="cancelDelete"></div>
+                        @click="cancelDelete">
+                    </div>
                     <div class="flex min-h-full items-center justify-center p-4">
                         <div
                             class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all">
@@ -948,7 +989,12 @@ const toggleReplies = (komentarId) => {
 }
 
 /* Penyesuaian tipografi */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
     letter-spacing: -0.025em;
 }
 </style>
